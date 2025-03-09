@@ -1,0 +1,145 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Audio Visualizer</title>
+  <style>
+    body {
+      margin: 0;
+      background: #000;
+      color: #fff;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    canvas {
+      display: block;
+      margin: 20px auto;
+      border: 1px solid #fff;
+      background: rgba(0, 0, 0, 0.5);
+    }
+    .controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+      z-index: 10;
+    }
+    button {
+      padding: 10px 15px;
+      font-size: 16px;
+      background: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    #gifAnimation, #gifPulse {
+      display: block;
+      max-width: 50%;
+      height: auto;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 5;
+      opacity: 0;
+      transition: opacity 0.5s ease-in-out;
+    }
+  </style>
+</head>
+<body>
+  <h1>Zondo :) Audio Visualizer (does not record)</h1>
+  <div class="controls">
+    <button id="startBtn">Must enable mic permissions to use</button>
+    <button id="fullscreenBtn">View in Fullscreen</button>
+    <label>
+      Mic Sensitivity: <input type="range" id="sensitivity" min="1" max="100" value="30" />
+    </label>
+  </div>
+
+  <div style="position: relative; width: 800px; height: 600px;">
+    <canvas id="canvas" width="800" height="600"></canvas>
+    <img id="gifAnimation" src="main_gif.gif" alt="Main GIF Animation" />
+    <img id="gifPulse" src="pulse_gif.gif" alt="Pulse GIF" />
+  </div>
+
+  <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const startBtn = document.getElementById("startBtn");
+    const fullscreenBtn = document.getElementById("fullscreenBtn");
+    const sensitivitySlider = document.getElementById("sensitivity");
+    const gifAnim = document.getElementById("gifAnimation");
+    const gifPulse = document.getElementById("gifPulse");
+    
+    let audioCtx, analyser, dataArray;
+    let sensitivity = Number(sensitivitySlider.value);
+    
+    sensitivitySlider.addEventListener("input", (e) => {
+      sensitivity = Number(e.target.value);
+    });
+    
+    fullscreenBtn.addEventListener("click", () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+      } else {
+        document.exitFullscreen();
+      }
+    });
+    
+    startBtn.addEventListener("click", async () => {
+      try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error("getUserMedia not supported in this browser.");
+        }
+        
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === "suspended") {
+          await audioCtx.resume();
+        }
+        
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 512;
+        dataArray = new Uint8Array(analyser.frequencyBinCount);
+        
+        const micSource = audioCtx.createMediaStreamSource(stream);
+        micSource.connect(analyser);
+        
+        animate();
+        startBtn.style.display = "none";
+      } catch (err) {
+        alert("Zondo :) needs permission to use your mic for visualization. Please grant access in browser settings.");
+        console.error("Microphone access error:", err);
+      }
+    });
+    
+    function animate() {
+      requestAnimationFrame(animate);
+      analyser.getByteFrequencyData(dataArray);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      const barWidth = canvas.width / dataArray.length;
+      for (let i = 0; i < dataArray.length; i++) {
+        const value = dataArray[i];
+        const percent = value / 255;
+        const barHeight = percent * canvas.height;
+        ctx.fillStyle = "#4caf50";
+        ctx.fillRect(i * barWidth, canvas.height - barHeight, barWidth - 1, barHeight);
+      }
+      
+      let avgVolume = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+      gifAnim.style.opacity = avgVolume > sensitivity ? "1" : "0";
+      gifPulse.style.opacity = avgVolume > sensitivity ? "1" : "0";
+    }
+  </script>
+</body>
+</html>

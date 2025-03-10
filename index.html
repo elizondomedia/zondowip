@@ -25,18 +25,18 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 100vw;
-      height: 100vh;
+      width: auto;
+      height: 90vh;
       object-fit: contain;
       z-index: 1;
     }
-    #pulseGif {
+    .pulseGif {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 40%;
-      height: auto;
+      width: auto;
+      height: 40vh;
       opacity: 0;
       transition: opacity 0.3s ease-in-out;
       z-index: 2;
@@ -65,7 +65,8 @@
 <body>
   <div class="container">
     <img id="backgroundGif" src="gif 1 back.GIF" alt="Background Animation" />
-    <img id="pulseGif" src="gif 2 pulse.GIF" alt="Pulse Animation" />
+    <img id="pulseGif1" class="pulseGif" src="gif 2 pulse.GIF" alt="Pulse Animation Low Frequency" />
+    <img id="pulseGif2" class="pulseGif" src="gif 2 pulse2.GIF" alt="Pulse Animation High Frequency" />
   </div>
   
   <div class="controls">
@@ -76,7 +77,8 @@
   <script>
     const startBtn = document.getElementById("startBtn");
     const fullscreenBtn = document.getElementById("fullscreenBtn");
-    const pulseGif = document.getElementById("pulseGif");
+    const pulseGif1 = document.getElementById("pulseGif1");
+    const pulseGif2 = document.getElementById("pulseGif2");
 
     let audioCtx, analyser, dataArray;
 
@@ -110,9 +112,17 @@
     function animate() {
       requestAnimationFrame(animate);
       analyser.getByteFrequencyData(dataArray);
-      
-      let avgVolume = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-      pulseGif.style.opacity = avgVolume > 20 ? "1" : "0";
+
+      let lowFreq = dataArray.slice(0, dataArray.length / 2).reduce((a, b) => a + b, 0) / (dataArray.length / 2);
+      let highFreq = dataArray.slice(dataArray.length / 2).reduce((a, b) => a + b, 0) / (dataArray.length / 2);
+
+      if (highFreq > lowFreq) {
+        pulseGif1.style.opacity = "0";
+        pulseGif2.style.opacity = "1";
+      } else {
+        pulseGif1.style.opacity = "1";
+        pulseGif2.style.opacity = "0";
+      }
     }
   </script>
 </body>

@@ -1,105 +1,71 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Zondo Visualizer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zondo :) Audio Visualizer</title>
   <style>
     body {
       margin: 0;
       background: #000;
+      color: #fff;
       text-align: center;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
       height: 100vh;
       overflow: hidden;
     }
-    .container {
-      position: relative;
-      width: 100vw;
-      height: 100vh;
-    }
-    #backgroundGif {
+    #fullscreenBtn {
       position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: auto;
-      height: 90vh;
-      object-fit: contain;
-      z-index: 1;
-    }
-    .pulseGif {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: auto;
-      height: 40vh;
-      opacity: 0;
-      transition: opacity 0.3s ease-in-out;
-      z-index: 2;
-    }
-    .controls {
-      position: absolute;
-      top: 20px;
+      top: 10px;
       left: 50%;
       transform: translateX(-50%);
-      z-index: 3;
-    }
-    button {
       padding: 10px 15px;
       font-size: 16px;
       background: #007bff;
       color: white;
       border: none;
       cursor: pointer;
-      margin: 5px;
+      z-index: 10;
     }
-    button:hover {
+    #fullscreenBtn:hover {
       background: #0056b3;
+    }
+    .visualizer-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .background-gif, .pulse-gif {
+      position: absolute;
+      max-width: 80%;
+      max-height: 80%;
+      object-fit: contain;
+    }
+    .pulse-gif {
+      opacity: 0;
+      transition: opacity 0.3s ease-in-out;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <img id="backgroundGif" src="gif 1 back.GIF" alt="Background Animation" />
-    <img id="pulseGif1" class="pulseGif" src="gif 2 pulse.GIF" alt="Pulse Animation Low Frequency" />
-    <img id="pulseGif2" class="pulseGif" src="gif 2 pulse2.GIF" alt="Pulse Animation High Frequency" />
-  </div>
-  
-  <div class="controls">
-    <button id="startBtn">Enable Microphone</button>
-    <button id="fullscreenBtn">View in Fullscreen</button>
+  <button id="fullscreenBtn">View in Fullscreen</button>
+  <div class="visualizer-container">
+    <img id="backgroundGif" class="background-gif" src="gif_1_back.GIF" alt="Background Animation">
+    <img id="pulseGif" class="pulse-gif" src="gif_2_pulse.GIF" alt="Pulse Animation">
+    <img id="pulseGif2" class="pulse-gif" src="gif_2_pulse2.GIF" alt="Pulse Animation 2">
   </div>
 
   <script>
-    const startBtn = document.getElementById("startBtn");
     const fullscreenBtn = document.getElementById("fullscreenBtn");
-    const pulseGif1 = document.getElementById("pulseGif1");
+    const pulseGif = document.getElementById("pulseGif");
     const pulseGif2 = document.getElementById("pulseGif2");
-
     let audioCtx, analyser, dataArray;
-
-    startBtn.addEventListener("click", async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        analyser = audioCtx.createAnalyser();
-        analyser.fftSize = 512;
-        dataArray = new Uint8Array(analyser.frequencyBinCount);
-        
-        const micSource = audioCtx.createMediaStreamSource(stream);
-        micSource.connect(analyser);
-
-        animate();
-        startBtn.style.display = "none";
-      } catch (err) {
-        alert("Zondo :) needs microphone access for visualization. Please enable mic permissions.");
-        console.error("Microphone access error:", err);
-      }
-    });
 
     fullscreenBtn.addEventListener("click", () => {
       if (!document.fullscreenElement) {
@@ -109,21 +75,39 @@
       }
     });
 
-    function animate() {
-      requestAnimationFrame(animate);
+    async function setupMicrophone() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 512;
+        dataArray = new Uint8Array(analyser.frequencyBinCount);
+        const micSource = audioCtx.createMediaStreamSource(stream);
+        micSource.connect(analyser);
+        animateVisualizer();
+      } catch (err) {
+        alert("Zondo :) needs microphone access for visualization. Enable in settings.");
+      }
+    }
+
+    function animateVisualizer() {
+      requestAnimationFrame(animateVisualizer);
       analyser.getByteFrequencyData(dataArray);
+      let avgVolume = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
 
-      let lowFreq = dataArray.slice(0, dataArray.length / 2).reduce((a, b) => a + b, 0) / (dataArray.length / 2);
-      let highFreq = dataArray.slice(dataArray.length / 2).reduce((a, b) => a + b, 0) / (dataArray.length / 2);
-
-      if (highFreq > lowFreq) {
-        pulseGif1.style.opacity = "0";
+      if (avgVolume > 50) {
+        pulseGif.style.opacity = "1";
+        pulseGif2.style.opacity = "0";
+      } else if (avgVolume > 30) {
+        pulseGif.style.opacity = "0";
         pulseGif2.style.opacity = "1";
       } else {
-        pulseGif1.style.opacity = "1";
+        pulseGif.style.opacity = "0";
         pulseGif2.style.opacity = "0";
       }
     }
+
+    setupMicrophone();
   </script>
 </body>
 </html>

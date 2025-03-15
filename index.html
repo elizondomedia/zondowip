@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Zondo Visualizer</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zondo:) Frequencies</title>
   <style>
-    /* Reset and Base Styles */
+    /* Reset and base styles */
     html, body {
       margin: 0;
       padding: 0;
@@ -14,71 +14,62 @@
       overflow: hidden; /* Prevent scrolling */
     }
 
-    /* Background container */
+    /* Background container fills the screen */
     #bgContainer {
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      z-index: -2;
+      z-index: -2;  /* behind everything */
       overflow: hidden;
     }
 
-    /* Static Default Background */
-    #staticBg {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      z-index: -3; /* Always behind everything */
-      opacity: 1;
-    }
-
-    /* Animated Background (GIFs) */
+    /* Background images (GIFs) style for proper scaling */
     .bgImage {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      object-fit: cover;
-      transition: opacity 1s ease-in-out;
+      object-fit: cover; 
+      transition: opacity 1s ease;
       opacity: 1;
-      pointer-events: none;
+      pointer-events: none; /* Allow clicks to pass through background */
     }
 
-    /* Audio Visualizer Canvas */
+    /* Ensure the default background always loads first */
+    #defaultBg {
+      opacity: 1;
+      z-index: -3; /* Keep it always behind other elements */
+    }
+
+    /* Canvas for visualizer (fills screen) */
     #visualizer {
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      z-index: -1;
+      z-index: -1; /* just above background, behind UI */
     }
 
-    /* Top Bar UI */
+    /* Top bar for controls and active frequency display */
     #topBar {
       position: fixed;
       top: 10px;
       left: 0;
       width: 100%;
-      padding: 10px;
+      padding: 0 10px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      z-index: 2;
+      z-index: 2; /* above canvas */
       color: #fff;
       font-family: Arial, sans-serif;
     }
-    #topBar button {
-      margin: 0 5px;
-    }
 
-    /* Active Frequency Display */
+    /* Active frequency display text */
     #freqDisplay {
       font-size: 1.5rem;
       text-shadow: 0 0 5px #000;
@@ -86,11 +77,11 @@
     }
 
     @keyframes flashAnim {
-      0% { opacity: 1; }
+      0%   { opacity: 1; }
       100% { opacity: 0.6; }
     }
 
-    /* Frequency Mapping Box */
+    /* Frequency mapping box (legend) */
     #freqBox {
       position: fixed;
       bottom: 10px;
@@ -102,7 +93,7 @@
       max-height: 900px;
       overflow: hidden;
       opacity: 1;
-      transition: max-height 0.5s ease, opacity 0.5s ease;
+      transition: max-height 0.5s ease, opacity 0.5s ease, padding 0.5s ease;
       z-index: 2;
       font-family: Arial, sans-serif;
       font-size: 0.95rem;
@@ -114,21 +105,18 @@
       padding: 0 10px;
     }
 
-    /* Responsive Adjustments */
+    /* Responsive adjustments */
     @media (max-width: 600px) {
       #topBar {
         flex-wrap: wrap;
         justify-content: center;
         text-align: center;
       }
-      #freqDisplay {
-        width: 100%;
-        margin: 5px 0;
-      }
       #freqBox {
         bottom: 5%;
         right: 5%;
         left: 5%;
+        width: auto;
         max-width: 90%;
         font-size: 0.9rem;
       }
@@ -137,103 +125,100 @@
 </head>
 <body>
 
-  <!-- Background Container with Static and Animated Backgrounds -->
+  <!-- Background container with default GIF -->
   <div id="bgContainer">
-    <img src="default_background.GIF" id="staticBg" alt="Static Background">
-    <img src="WHITE_000.GIF" class="bgImage" id="currentBg" alt="Background Animation">
+    <img src="default_background.GIF" class="bgImage" id="defaultBg" alt="Default Background Animation">
   </div>
 
-  <!-- Canvas for Audio Visualizer -->
+  <!-- Canvas for the audio visualizer -->
   <canvas id="visualizer"></canvas>
 
-  <!-- Top Bar UI -->
+  <!-- Top bar UI: controls and display -->
   <div id="topBar">
     <button id="micButton">Start Mic</button>
     <div id="freqDisplay">0 Hz</div>
     <button id="bgButton">Change Background</button>
-    <button id="freqToggle">Hide Freq Box</button>
+    <button id="freqToggle">Show Freq Box</button>
   </div>
 
-  <!-- Frequency Mapping Box -->
+  <!-- Frequency mapping legend (collapsible) -->
   <div id="freqBox">
     <h3>Frequency Ranges</h3>
     <ul>
-      <li>144Hz - Light Blue</li>
-      <li>244Hz - Light Green</li>
+      <li>144Hz - LightBlue</li>
+      <li>244Hz - LightGreen</li>
       <li>350Hz - Pink</li>
       <li>384Hz - Teal</li>
       <li>396Hz - Burgundy</li>
-      <li>400Hz - Dark Green</li>
-      <li>432Hz - Dark Purple</li>
-      <li>480Hz - Dark Blue</li>
+      <li>400Hz - DarkGreen</li>
+      <li>432Hz - DarkPurple</li>
+      <li>480Hz - DarkBlue</li>
       <li>528Hz - Yellow</li>
       <li>540Hz - Turquoise</li>
       <li>700Hz - Orange</li>
-      <li>768Hz - Light Purple</li>
+      <li>768Hz - LightPurple</li>
       <li>852Hz - Silver</li>
       <li>963Hz - Gold</li>
-      <li>All Other Hz - "White Noise"</li>
+      <li>All Other Hz - (Low & High) - "White Noise"</li>
     </ul>
   </div>
 
   <script>
+    const defaultBg = document.getElementById('defaultBg');
     const freqDisplay = document.getElementById('freqDisplay');
-    const freqBox = document.getElementById('freqBox');
-    const freqToggleBtn = document.getElementById('freqToggle');
     const micButton = document.getElementById('micButton');
     const bgButton = document.getElementById('bgButton');
-    const bgContainer = document.getElementById('bgContainer');
+    const freqToggleBtn = document.getElementById('freqToggle');
+    const freqBox = document.getElementById('freqBox');
 
-    const backgrounds = ['BURGUNDY_396.GIF', 'DARKBLUE_480.GIF', 'DARKGREEN_400.GIF', 'DARKPURPLE_432.GIF', 'GOLD_962.GIF', 'LIGHTBLUE_144.GIF', 'LIGHTGREEN_244.GIF', 'LIGHTPURPLE_768.GIF', 'ORANGE_700.GIF', 'PINK_350.GIF', 'SILVER_852.GIF', 'TEAL_384.GIF', 'TURQUOISE_540.GIF', 'WHITE_000.GIF', 'YELLOW_528.GIF'];
-    let currentBgIndex = 0;
-    let bgTransitionInProgress = false;
+    let audioCtx, analyser, micStream;
+    let isMicActive = false;
 
-    function changeBackground(nextSrc) {
-      if (bgTransitionInProgress) return;
-      bgTransitionInProgress = true;
-
-      const newBg = document.createElement('img');
-      newBg.src = nextSrc;
-      newBg.className = 'bgImage';
-      newBg.style.opacity = '0';
-      bgContainer.appendChild(newBg);
-      requestAnimationFrame(() => { newBg.style.opacity = '1'; });
-
-      setTimeout(() => {
-        const images = bgContainer.getElementsByClassName('bgImage');
-        while (images.length > 1) { bgContainer.removeChild(images[0]); }
-        bgTransitionInProgress = false;
-      }, 1000);
+    function startMic() {
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+        micStream = stream;
+        audioCtx = new AudioContext();
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 1024;
+        const source = audioCtx.createMediaStreamSource(stream);
+        source.connect(analyser);
+        isMicActive = true;
+        renderFrame();
+      }).catch(err => {
+        alert('Microphone access denied.');
+      });
     }
+
+    function stopMic() {
+      if (micStream) {
+        micStream.getTracks().forEach(track => track.stop());
+      }
+      if (audioCtx) {
+        audioCtx.close();
+        audioCtx = null;
+      }
+      isMicActive = false;
+      freqDisplay.textContent = '0 Hz';
+    }
+
+    function renderFrame() {
+      requestAnimationFrame(renderFrame);
+      if (!analyser) return;
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      analyser.getByteFrequencyData(dataArray);
+      const maxVal = Math.max(...dataArray);
+      freqDisplay.textContent = `${maxVal} Hz`;
+    }
+
+    micButton.addEventListener('click', () => {
+      isMicActive ? stopMic() : startMic();
+    });
 
     freqToggleBtn.addEventListener('click', () => {
       freqBox.classList.toggle('collapsed');
       freqToggleBtn.textContent = freqBox.classList.contains('collapsed') ? 'Show Freq Box' : 'Hide Freq Box';
     });
 
-    bgButton.addEventListener('click', () => {
-      currentBgIndex = (currentBgIndex + 1) % backgrounds.length;
-      changeBackground(backgrounds[currentBgIndex]);
-    });
-
-    micButton.addEventListener('click', () => {
-      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const analyser = audioCtx.createAnalyser();
-        analyser.fftSize = 1024;
-        const source = audioCtx.createMediaStreamSource(stream);
-        source.connect(analyser);
-
-        function analyzeAudio() {
-          const dataArray = new Uint8Array(analyser.frequencyBinCount);
-          analyser.getByteFrequencyData(dataArray);
-          const maxVal = Math.max(...dataArray);
-          freqDisplay.textContent = `${maxVal} Hz`;
-          requestAnimationFrame(analyzeAudio);
-        }
-        analyzeAudio();
-      });
-    });
   </script>
 </body>
 </html>

@@ -5,7 +5,6 @@
   <title>Zondo Visualizer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    /* Ensure full-screen scaling */
     html, body {
       margin: 0;
       padding: 0;
@@ -99,7 +98,6 @@
 
     let audioContext, analyser, micStream, animationFrameId;
 
-    // Frequency-to-GIF mapping
     function getFrequencyGif(frequency) {
       const gifs = {
         144: "LIGHTBLUE_144.GIF",
@@ -121,7 +119,7 @@
       return gifs[frequency] || gifs["default"];
     }
 
-    // Manually set frequency
+    // Handle manual frequency input
     setFrequencyBtn.addEventListener("click", () => {
       const frequency = parseInt(frequencyInput.value);
       if (!isNaN(frequency)) {
@@ -143,7 +141,7 @@
             analyser.fftSize = 256;
             micStream = audioContext.createMediaStreamSource(stream);
             micStream.connect(analyser);
-            
+
             processMicAudio();
           })
           .catch((error) => {
@@ -156,17 +154,18 @@
       }
     });
 
-    // Process audio input
+    // Process audio input safely
     function processMicAudio() {
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      
+
       function analyzeFrequency() {
         analyser.getByteFrequencyData(dataArray);
-        let avgFrequency = dataArray.reduce((sum, val) => sum + val, 0) / dataArray.length;
+        if (dataArray.length === 0) return; // Prevents reduce() on empty array error
 
-        let closestFrequency = Object.keys(getFrequencyGif)
-          .map(Number)
-          .reduce((prev, curr) => Math.abs(curr - avgFrequency) < Math.abs(prev - avgFrequency) ? curr : prev);
+        let avgFrequency = dataArray.reduce((sum, val) => sum + val, 0) / dataArray.length || 144;
+        let closestFrequency = Object.keys(getFrequencyGif()).map(Number).reduce((prev, curr) =>
+          Math.abs(curr - avgFrequency) < Math.abs(prev - avgFrequency) ? curr : prev
+        );
 
         visualizer.src = getFrequencyGif(closestFrequency);
         animationFrameId = requestAnimationFrame(analyzeFrequency);
@@ -187,7 +186,6 @@
     colorSelect.addEventListener("change", () => {
       visualizer.src = colorSelect.value;
     });
-
   </script>
 </body>
 </html>

@@ -10,11 +10,13 @@
             color: white;
             text-align: center;
             font-family: Arial, sans-serif;
+            margin: 0;
+            overflow: hidden; /* Prevent scrolling */
         }
         #container {
             position: relative;
-            width: 100%;
-            height: 500px;
+            width: 100vw;
+            height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -24,15 +26,34 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            opacity: 0.5; /* Adjust transparency if needed */
         }
         #visualizer {
-            position: relative;
-            z-index: 1;
+            position: absolute;
+            z-index: 2;
         }
-        img {
-            max-width: 100%;
-            height: auto;
+        button {
+            position: absolute;
+            bottom: 20px;
+            padding: 10px 20px;
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid white;
+            cursor: pointer;
+            font-size: 16px;
+            transition: 0.3s;
+        }
+        button:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+        select {
+            position: absolute;
+            bottom: 60px;
+            background-color: black;
+            color: white;
+            border: 1px solid white;
+            padding: 5px;
+            font-size: 16px;
+            cursor: pointer;
         }
     </style>
     <script>
@@ -57,19 +78,79 @@
             return colors[frequency] || colors['default'];
         }
 
-        function updateVisualizer() {
+        function updateVisualizer(frequency) {
+            const imgSrc = getFrequencyColor(parseInt(frequency));
+            document.getElementById("visualizer").innerHTML = `<img src="${imgSrc}" alt="Visualizer Animation">`;
+        }
+
+        function promptForFrequency() {
             const frequency = prompt("Enter frequency (Hz):", "432");
             if (frequency !== null) {
-                const imgSrc = getFrequencyColor(parseInt(frequency));
-                document.getElementById("visualizer").innerHTML = `<img src="${imgSrc}" alt="Visualizer Animation">`;
+                updateVisualizer(frequency);
+            }
+        }
+
+        function setDefaultColor() {
+            const selectedFrequency = document.getElementById("colorSelector").value;
+            updateVisualizer(selectedFrequency);
+        }
+
+        function startMicInput() {
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then((stream) => {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const analyzer = audioContext.createAnalyser();
+                    const source = audioContext.createMediaStreamSource(stream);
+                    source.connect(analyzer);
+
+                    analyzer.fftSize = 256;
+                    const bufferLength = analyzer.frequencyBinCount;
+                    const dataArray = new Uint8Array(bufferLength);
+
+                    function detectFrequency() {
+                        analyzer.getByteFrequencyData(dataArray);
+                        const maxIndex = dataArray.indexOf(Math.max(...dataArray));
+                        const detectedFrequency = Math.round((maxIndex * audioContext.sampleRate) / analyzer.fftSize);
+                        
+                        updateVisualizer(detectedFrequency);
+                        requestAnimationFrame(detectFrequency);
+                    }
+
+                    detectFrequency();
+                })
+                .catch((err) => {
+                    alert("Microphone access denied or not available.");
+                });
+        }
+
+        function toggleFullScreen() {
+            let elem = document.documentElement;
+
+            if (!document.fullscreenElement && !document.mozFullScreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
+                if (elem.requestFullscreen) {
+                    elem.requestFullscreen();
+                } else if (elem.mozRequestFullScreen) { /* Firefox */
+                    elem.mozRequestFullScreen();
+                } else if (elem.webkitRequestFullscreen) { /* Chrome, Safari & Opera */
+                    elem.webkitRequestFullscreen();
+                } else if (elem.msRequestFullscreen) { /* IE/Edge */
+                    elem.msRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.mozCancelFullScreen) { /* Firefox */
+                    document.mozCancelFullScreen();
+                } else if (document.webkitExitFullscreen) { /* Chrome, Safari & Opera */
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) { /* IE/Edge */
+                    document.msExitFullscreen();
+                }
             }
         }
     </script>
 </head>
 <body>
-    <h1>Zondo Visualizer</h1>
-    <p>Experience the frequency-based color dynamics.</p>
-
     <div id="container">
         <img id="background" src="static_back.gif" alt="Static Background">
         <div id="visualizer">
@@ -77,6 +158,25 @@
         </div>
     </div>
 
-    <button onclick="updateVisualizer()">Set Frequency</button>
+    <select id="colorSelector" onchange="setDefaultColor()">
+        <option value="144">Light Blue</option>
+        <option value="244">Light Green</option>
+        <option value="350">Pink</option>
+        <option value="384">Teal</option>
+        <option value="396">Burgundy</option>
+        <option value="400">Dark Green</option>
+        <option value="432">Dark Purple</option>
+        <option value="480">Dark Blue</option>
+        <option value="528">Yellow</option>
+        <option value="540">Turquoise</option>
+        <option value="700">Orange</option>
+        <option value="768">Light Purple</option>
+        <option value="852">Silver</option>
+        <option value="963">Gold</option>
+    </select>
+
+    <button onclick="promptForFrequency()">Set Frequency</button>
+    <button style="right: 20px;" onclick="startMicInput()">Grant Mic Access</button>
+    <button style="left: 20px;" onclick="toggleFullScreen()">Fullscreen</button>
 </body>
 </html>

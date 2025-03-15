@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Zondo Visualizer</title>
   <style>
-    /* General Styling */
+    /* Background Setup */
     body {
       margin: 0;
       padding: 0;
@@ -16,7 +16,7 @@
       text-align: center;
     }
 
-    /* Background Image */
+    /* Static Background Image */
     #backgroundImage {
       position: fixed;
       top: 0;
@@ -27,15 +27,13 @@
       z-index: -2;
     }
 
-    /* Dynamic GIF Display */
+    /* GIF Display (Animated Visualizer) */
     #gifDisplay {
       position: fixed;
       top: 50%;
       left: 50%;
-      width: 80vw;
-      height: 80vh;
-      max-width: 100%;
-      max-height: 100%;
+      width: 100vw;
+      height: 100vh;
       object-fit: contain;
       transform: translate(-50%, -50%);
       z-index: -1;
@@ -48,18 +46,18 @@
       bottom: 20px;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.8);
+      background: rgba(0, 0, 0, 0.7);
       padding: 10px;
       border-radius: 10px;
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       gap: 10px;
-      flex-wrap: wrap;
     }
 
     /* Button & Select Styling */
     button, select {
-      padding: 8px 12px;
+      padding: 10px;
       font-size: 1rem;
       border-radius: 5px;
       border: none;
@@ -93,22 +91,23 @@
       transition: opacity 0.5s ease;
     }
 
-    /* Adjust Legend for Mobile */
+    /* Adjust Legend & Scaling for Mobile */
     @media screen and (max-width: 600px) {
       #legend {
-        top: 10px;
+        top: auto;
+        bottom: 80px;
         right: 10px;
         font-size: 0.8rem;
-        padding: 8px;
-        cursor: pointer;
-        transition: transform 0.3s ease;
+        transform: scale(0.8);
       }
-      #legend.collapsed {
-        transform: scale(0);
+
+      #gifDisplay {
+        width: 90vw;
+        height: 90vh;
       }
+
       #controls {
         flex-direction: column;
-        align-items: center;
       }
     }
 
@@ -199,34 +198,24 @@
     const gifSelector = document.getElementById("gifSelector");
     const fullscreenButton = document.getElementById("fullscreenButton");
 
-    function changeGif(newSrc) {
-      if (newSrc !== currentGif) {
-        gifImage.style.opacity = 0;
-        setTimeout(() => {
-          gifImage.src = newSrc;
-          gifImage.onload = () => gifImage.style.opacity = 1;
-        }, 250);
-        currentGif = newSrc;
-      }
+    function analyzeAudio() {
+      if (!autoMode || !analyser) return;
+      const dataArray = new Uint8Array(analyser.fftSize);
+      analyser.getByteFrequencyData(dataArray);
+      const volume = Math.max(...dataArray);
+      const targetGif = gifThresholds.find(t => volume >= t.threshold)?.file || "WHITE_000.GIF";
+      if (targetGif !== currentGif) gifImage.src = targetGif;
+      requestAnimationFrame(analyzeAudio);
     }
 
-    micButton.addEventListener("click", () => {
-      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-        audioContext = new AudioContext();
-        analyser = audioContext.createAnalyser();
-        const source = audioContext.createMediaStreamSource(stream);
-        source.connect(analyser);
-      });
+    micButton.onclick = () => navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+      audioContext = new AudioContext();
+      analyser = audioContext.createAnalyser();
+      audioContext.createMediaStreamSource(stream).connect(analyser);
+      analyzeAudio();
     });
 
-    fullscreenButton.addEventListener("click", () => {
-      document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
-    });
-
-    gifSelector.addEventListener("change", () => {
-      autoMode = gifSelector.value === "AUTO";
-      if (!autoMode) changeGif(gifSelector.value);
-    });
+    fullscreenButton.onclick = () => document.fullscreenElement ? document.exitFullscreen() : document.body.requestFullscreen();
   </script>
 </body>
 </html>

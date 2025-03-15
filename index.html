@@ -113,7 +113,7 @@
     const micStatus = document.getElementById("mic-status");
     const fullscreenBtn = document.getElementById("fullscreen-btn");
 
-    let audioContext, analyser, microphoneStream;
+    let audioContext, analyser, microphoneStream, animationFrameId;
 
     function updateVisualizer() {
       const freq = parseInt(freqInput.value);
@@ -162,11 +162,17 @@
 
       function analyzeFrequency() {
         analyser.getByteFrequencyData(frequencyData);
-        const dominantFreq = frequencyData.indexOf(Math.max(...frequencyData));
-        const gifFile = frequencyToGif[dominantFreq] || frequencyToGif["default"];
-        backgroundImage.src = gifFile;
+        const maxAmplitude = Math.max(...frequencyData);
+        const dominantIndex = frequencyData.indexOf(maxAmplitude);
 
-        requestAnimationFrame(analyzeFrequency);
+        if (maxAmplitude > 0) { 
+          const gifFile = frequencyToGif[dominantIndex] || frequencyToGif["default"];
+          if (backgroundImage.src !== gifFile) {
+            backgroundImage.src = gifFile;
+          }
+        }
+
+        animationFrameId = requestAnimationFrame(analyzeFrequency);
       }
 
       analyzeFrequency();

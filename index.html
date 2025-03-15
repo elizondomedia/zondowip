@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Zondo Visualizer</title>
   <style>
-    /* Background Setup */
+    /* General Styling */
     body {
       margin: 0;
       padding: 0;
@@ -16,7 +16,7 @@
       text-align: center;
     }
 
-    /* Static Background Image */
+    /* Background Image */
     #backgroundImage {
       position: fixed;
       top: 0;
@@ -27,13 +27,13 @@
       z-index: -2;
     }
 
-    /* GIF Display (Animated Visualizer) */
+    /* GIF Display */
     #gifDisplay {
       position: fixed;
       top: 50%;
       left: 50%;
-      width: 100vw;
-      height: 100vh;
+      width: 80vw;
+      height: 80vh;
       object-fit: contain;
       transform: translate(-50%, -50%);
       z-index: -1;
@@ -78,23 +78,10 @@
       color: black;
     }
 
-    /* Frequency Legend */
-    #legend {
-      position: absolute;
-      top: 10px;
-      right: 20px;
-      background: rgba(0, 0, 0, 0.7);
-      padding: 10px;
-      border-radius: 10px;
-      font-size: 0.9rem;
-      text-align: left;
-      transition: opacity 0.5s ease;
-    }
-
-    /* Flashing Active Frequency Display */
+    /* Flashing Real-Time Frequency Display */
     #activeFrequency {
       position: absolute;
-      top: 50px;
+      top: 10px;
       right: 20px;
       font-size: 1.5rem;
       font-weight: bold;
@@ -108,16 +95,8 @@
       100% { opacity: 0.5; }
     }
 
-    /* Adjust Legend & Scaling for Mobile */
+    /* Mobile Adjustments */
     @media screen and (max-width: 600px) {
-      #legend {
-        top: auto;
-        bottom: 80px;
-        right: 10px;
-        font-size: 0.8rem;
-        transform: scale(0.8);
-      }
-
       #gifDisplay {
         width: 90vw;
         height: 90vh;
@@ -133,12 +112,6 @@
         font-size: 1rem;
       }
     }
-
-    /* Hide Legend in Fullscreen */
-    .fullscreen #legend {
-      opacity: 0;
-      transition: opacity 0.5s ease;
-    }
   </style>
 </head>
 <body>
@@ -146,7 +119,7 @@
   <!-- Static Background Image -->
   <img id="backgroundImage" src="default_background.png" alt="Background">
 
-  <!-- GIF Display (Animated Visualizer) -->
+  <!-- GIF Display -->
   <img id="gifDisplay" src="WHITE_000.GIF" alt="Audio Visualizer GIF">
 
   <!-- Active Frequency Display -->
@@ -158,7 +131,6 @@
     <button id="fullscreenButton">⛶ Fullscreen</button>
     <select id="gifSelector">
       <option value="AUTO">🔄 Auto (Mic Controlled)</option>
-      <option value="WHITE_000.GIF">White</option>
       <option value="LIGHTBLUE_144.GIF">Light Blue</option>
       <option value="LIGHTGREEN_244.GIF">Light Green</option>
       <option value="PINK_350.GIF">Pink</option>
@@ -174,26 +146,6 @@
       <option value="SILVER_852.GIF">Silver</option>
       <option value="GOLD_962.GIF">Gold</option>
     </select>
-  </div>
-
-  <!-- Frequency Legend -->
-  <div id="legend">
-    <strong>Frequency - Color Mapping</strong><br>
-    144Hz - Light Blue<br>
-    244Hz - Light Green<br>
-    350Hz - Pink<br>
-    384Hz - Teal<br>
-    396Hz - Burgundy<br>
-    400Hz - Dark Green<br>
-    432Hz - Dark Purple<br>
-    480Hz - Dark Blue<br>
-    528Hz - Yellow<br>
-    540Hz - Turquoise<br>
-    700Hz - Orange<br>
-    768Hz - Light Purple<br>
-    852Hz - Silver<br>
-    963Hz - Gold<br>
-    All Other Hz - "White Noise"
   </div>
 
   <script>
@@ -221,6 +173,21 @@
 
     const activeFrequencyText = document.getElementById("activeFrequency");
     const gifImage = document.getElementById("gifDisplay");
+    const micButton = document.getElementById("micButton");
+    const gifSelector = document.getElementById("gifSelector");
+    const fullscreenButton = document.getElementById("fullscreenButton");
+    const body = document.body;
+
+    function changeGif(newSrc) {
+      if (newSrc !== currentGif) {
+        gifImage.style.opacity = 0;
+        setTimeout(() => {
+          gifImage.src = newSrc;
+          gifImage.onload = () => gifImage.style.opacity = 1;
+        }, 250);
+        currentGif = newSrc;
+      }
+    }
 
     function analyzeAudio() {
       if (!autoMode || !analyser) return;
@@ -229,17 +196,31 @@
       const volume = Math.max(...dataArray);
       const targetGif = gifThresholds.find(t => volume >= t.threshold)?.file || "WHITE_000.GIF";
 
-      if (targetGif !== currentGif) gifImage.src = targetGif;
+      if (targetGif !== currentGif) changeGif(targetGif);
       activeFrequencyText.textContent = `Hz: ${volume}`;
 
       requestAnimationFrame(analyzeAudio);
     }
 
-    document.getElementById("micButton").onclick = () => navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-      audioContext = new AudioContext();
-      analyser = audioContext.createAnalyser();
-      audioContext.createMediaStreamSource(stream).connect(analyser);
-      analyzeAudio();
+    micButton.addEventListener("click", () => {
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+        audioContext = new AudioContext();
+        analyser = audioContext.createAnalyser();
+        audioContext.createMediaStreamSource(stream).connect(analyser);
+        analyzeAudio();
+      });
+    });
+
+    gifSelector.addEventListener("change", () => {
+      autoMode = gifSelector.value === "AUTO";
+      if (!autoMode) {
+        changeGif(gifSelector.value);
+      }
+    });
+
+    fullscreenButton.addEventListener("click", () => {
+      body.classList.toggle("fullscreen");
+      document.fullscreenElement ? document.exitFullscreen() : body.requestFullscreen();
     });
   </script>
 </body>

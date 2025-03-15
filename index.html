@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Zondo Visualizer</title>
   <style>
-    /* General Page Setup */
+    /* Background Setup */
     body {
       margin: 0;
       padding: 0;
@@ -16,7 +16,7 @@
       text-align: center;
     }
 
-    /* Background Image */
+    /* Static Background Image Always Visible */
     #backgroundImage {
       position: fixed;
       top: 0;
@@ -27,7 +27,7 @@
       z-index: -2;
     }
 
-    /* GIF Display (Scaled to Match Background) */
+    /* Centering GIF Display and Scaling to Match Background */
     #gifDisplay {
       position: fixed;
       top: 0;
@@ -36,7 +36,7 @@
       height: 100%;
       object-fit: cover;
       z-index: -1;
-      transition: opacity 0.5s ease-in-out;
+      transition: opacity 0.5s ease;
     }
 
     /* Controls Panel */
@@ -76,7 +76,7 @@
       color: black;
     }
 
-    /* Frequency Legend */
+    /* Legend (Frequency Information) */
     #legend {
       position: absolute;
       top: 10px;
@@ -151,8 +151,25 @@
   <script>
     let audioContext, analyser;
     let autoMode = true;
-    let selectedColor = "WHITE_000.GIF"; // Default to White
     let currentGif = "WHITE_000.GIF";
+
+    const gifThresholds = [
+      { threshold: 0, file: "WHITE_000.GIF" },
+      { threshold: 144, file: "LIGHTBLUE_144.GIF" },
+      { threshold: 244, file: "LIGHTGREEN_244.GIF" },
+      { threshold: 350, file: "PINK_350.GIF" },
+      { threshold: 384, file: "TEAL_384.GIF" },
+      { threshold: 396, file: "BURGUNDY_396.GIF" },
+      { threshold: 400, file: "DARKGREEN_400.GIF" },
+      { threshold: 432, file: "DARKPURPLE_432.GIF" },
+      { threshold: 480, file: "DARKBLUE_480.GIF" },
+      { threshold: 528, file: "YELLOW_528.GIF" },
+      { threshold: 540, file: "TURQUOISE_540.GIF" },
+      { threshold: 700, file: "ORANGE_700.GIF" },
+      { threshold: 768, file: "LIGHTPURPLE_768.GIF" },
+      { threshold: 852, file: "SILVER_852.GIF" },
+      { threshold: 962, file: "GOLD_962.GIF" }
+    ];
 
     const gifImage = document.getElementById("gifDisplay");
     const micButton = document.getElementById("micButton");
@@ -162,7 +179,7 @@
 
     function changeGif(newSrc) {
       if (newSrc !== currentGif) {
-        gifImage.style.opacity = 0.5; // Slight fade effect
+        gifImage.style.opacity = 0;
         setTimeout(() => {
           gifImage.src = newSrc;
           gifImage.onload = () => gifImage.style.opacity = 1;
@@ -172,7 +189,7 @@
     }
 
     function analyzeAudio() {
-      if (!analyser) {
+      if (!autoMode || !analyser) {
         requestAnimationFrame(analyzeAudio);
         return;
       }
@@ -187,8 +204,17 @@
       }
       const volume = Math.sqrt(sum / bufferLength) * 8;
 
-      if (autoMode) {
-        changeGif(selectedColor);
+      let targetGif = gifThresholds[0].file;
+      for (const threshold of gifThresholds) {
+        if (volume >= threshold.threshold) {
+          targetGif = threshold.file;
+        } else {
+          break;
+        }
+      }
+
+      if (targetGif !== currentGif && autoMode) {
+        changeGif(targetGif);
       }
 
       requestAnimationFrame(analyzeAudio);
@@ -197,8 +223,7 @@
     gifSelector.addEventListener("change", () => {
       autoMode = gifSelector.value === "AUTO";
       if (!autoMode) {
-        selectedColor = gifSelector.value;
-        changeGif(selectedColor);
+        changeGif(gifSelector.value);
       }
     });
 

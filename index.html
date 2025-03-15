@@ -11,172 +11,142 @@
             text-align: center;
             font-family: Arial, sans-serif;
             margin: 0;
-            overflow: hidden; /* Prevent scrolling */
+            overflow: hidden;
         }
-        #container {
-            position: relative;
+        #visualizer {
             width: 100vw;
             height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            position: relative;
+            background-size: cover;
+            background-position: center;
         }
-        #background {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        #visualizer {
-            position: absolute;
-            z-index: 2;
-        }
-        button {
+        #controls {
             position: absolute;
             bottom: 20px;
-            padding: 10px 20px;
-            background-color: rgba(255, 255, 255, 0.1);
-            color: white;
-            border: 1px solid white;
-            cursor: pointer;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        button, select {
+            padding: 10px;
             font-size: 16px;
-            transition: 0.3s;
+            border: none;
+            cursor: pointer;
+        }
+        button {
+            background-color: #333;
+            color: white;
         }
         button:hover {
-            background-color: rgba(255, 255, 255, 0.3);
-        }
-        select {
-            position: absolute;
-            bottom: 60px;
-            background-color: black;
-            color: white;
-            border: 1px solid white;
-            padding: 5px;
-            font-size: 16px;
-            cursor: pointer;
+            background-color: #555;
         }
     </style>
-    <script>
-        function getFrequencyColor(frequency) {
-            const colors = {
-                144: 'LIGHTBLUE_144.GIF',
-                244: 'LIGHTGREEN_244.GIF',
-                350: 'PINK_350.GIF',
-                384: 'TEAL_384.GIF',
-                396: 'BURGUNDY_396.GIF',
-                400: 'DARKGREEN_400.GIF',
-                432: 'DARKPURPLE_432.GIF',
-                480: 'DARKBLUE_480.GIF',
-                528: 'YELLOW_528.GIF',
-                540: 'TURQUOISE_540.GIF',
-                700: 'ORANGE_700.GIF',
-                768: 'LIGHTPURPLE_768.GIF',
-                852: 'SILVER_852.GIF',
-                963: 'GOLD_962.GIF',
-                'default': 'WHITE_000.GIF'
-            };
-            return colors[frequency] || colors['default'];
-        }
-
-        function updateVisualizer(frequency) {
-            const imgSrc = getFrequencyColor(parseInt(frequency));
-            document.getElementById("visualizer").innerHTML = `<img src="${imgSrc}" alt="Visualizer Animation">`;
-        }
-
-        function promptForFrequency() {
-            const frequency = prompt("Enter frequency (Hz):", "432");
-            if (frequency !== null) {
-                updateVisualizer(frequency);
-            }
-        }
-
-        function setDefaultColor() {
-            const selectedFrequency = document.getElementById("colorSelector").value;
-            updateVisualizer(selectedFrequency);
-        }
-
-        function startMicInput() {
-            navigator.mediaDevices.getUserMedia({ audio: true })
-                .then((stream) => {
-                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    const analyzer = audioContext.createAnalyser();
-                    const source = audioContext.createMediaStreamSource(stream);
-                    source.connect(analyzer);
-
-                    analyzer.fftSize = 256;
-                    const bufferLength = analyzer.frequencyBinCount;
-                    const dataArray = new Uint8Array(bufferLength);
-
-                    function detectFrequency() {
-                        analyzer.getByteFrequencyData(dataArray);
-                        const maxIndex = dataArray.indexOf(Math.max(...dataArray));
-                        const detectedFrequency = Math.round((maxIndex * audioContext.sampleRate) / analyzer.fftSize);
-                        
-                        updateVisualizer(detectedFrequency);
-                        requestAnimationFrame(detectFrequency);
-                    }
-
-                    detectFrequency();
-                })
-                .catch((err) => {
-                    alert("Microphone access denied or not available.");
-                });
-        }
-
-        function toggleFullScreen() {
-            let elem = document.documentElement;
-
-            if (!document.fullscreenElement && !document.mozFullScreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
-                if (elem.requestFullscreen) {
-                    elem.requestFullscreen();
-                } else if (elem.mozRequestFullScreen) { /* Firefox */
-                    elem.mozRequestFullScreen();
-                } else if (elem.webkitRequestFullscreen) { /* Chrome, Safari & Opera */
-                    elem.webkitRequestFullscreen();
-                } else if (elem.msRequestFullscreen) { /* IE/Edge */
-                    elem.msRequestFullscreen();
-                }
-            } else {
-                if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                } else if (document.mozCancelFullScreen) { /* Firefox */
-                    document.mozCancelFullScreen();
-                } else if (document.webkitExitFullscreen) { /* Chrome, Safari & Opera */
-                    document.webkitExitFullscreen();
-                } else if (document.msExitFullscreen) { /* IE/Edge */
-                    document.msExitFullscreen();
-                }
-            }
-        }
-    </script>
 </head>
 <body>
-    <div id="container">
-        <img id="background" src="static_back.gif" alt="Static Background">
-        <div id="visualizer">
-            <p>Visualizer Placeholder</p>
-        </div>
+    <div id="visualizer"></div>
+
+    <div id="controls">
+        <button onclick="toggleFullscreen()">Fullscreen</button>
+        <select id="colorSelector" onchange="updateVisualizerFromSelection()">
+            <option value="LIGHTBLUE_144.GIF">Light Blue</option>
+            <option value="LIGHTGREEN_244.GIF">Light Green</option>
+            <option value="PINK_350.GIF">Pink</option>
+            <option value="TEAL_384.GIF">Teal</option>
+            <option value="BURGUNDY_396.GIF">Burgundy</option>
+            <option value="DARKGREEN_400.GIF">Dark Green</option>
+            <option value="DARKPURPLE_432.GIF">Dark Purple</option>
+            <option value="DARKBLUE_480.GIF">Dark Blue</option>
+            <option value="YELLOW_528.GIF">Yellow</option>
+            <option value="TURQUOISE_540.GIF">Turquoise</option>
+            <option value="ORANGE_700.GIF">Orange</option>
+            <option value="LIGHTPURPLE_768.GIF">Light Purple</option>
+            <option value="SILVER_852.GIF">Silver</option>
+            <option value="GOLD_962.GIF">Gold</option>
+            <option value="WHITE_000.GIF">White (Default)</option>
+        </select>
+        <button onclick="updateVisualizerFromFrequency()">Set Frequency</button>
+        <button onclick="requestMicAccess()">Grant Mic Access</button>
     </div>
 
-    <select id="colorSelector" onchange="setDefaultColor()">
-        <option value="144">Light Blue</option>
-        <option value="244">Light Green</option>
-        <option value="350">Pink</option>
-        <option value="384">Teal</option>
-        <option value="396">Burgundy</option>
-        <option value="400">Dark Green</option>
-        <option value="432">Dark Purple</option>
-        <option value="480">Dark Blue</option>
-        <option value="528">Yellow</option>
-        <option value="540">Turquoise</option>
-        <option value="700">Orange</option>
-        <option value="768">Light Purple</option>
-        <option value="852">Silver</option>
-        <option value="963">Gold</option>
-    </select>
+    <script>
+        const frequencyMap = {
+            144: 'LIGHTBLUE_144.GIF',
+            244: 'LIGHTGREEN_244.GIF',
+            350: 'PINK_350.GIF',
+            384: 'TEAL_384.GIF',
+            396: 'BURGUNDY_396.GIF',
+            400: 'DARKGREEN_400.GIF',
+            432: 'DARKPURPLE_432.GIF',
+            480: 'DARKBLUE_480.GIF',
+            528: 'YELLOW_528.GIF',
+            540: 'TURQUOISE_540.GIF',
+            700: 'ORANGE_700.GIF',
+            768: 'LIGHTPURPLE_768.GIF',
+            852: 'SILVER_852.GIF',
+            963: 'GOLD_962.GIF',
+            'default': 'WHITE_000.GIF'
+        };
 
-    <button onclick="promptForFrequency()">Set Frequency</button>
-    <button style="right: 20px;" onclick="startMicInput()">Grant Mic Access</button>
-    <button style="left: 20px;" onclick="toggleFullScreen()">Fullscreen</button>
+        function updateVisualizer(image) {
+            document.getElementById("visualizer").style.backgroundImage = `url('${image}')`;
+        }
+
+        function updateVisualizerFromSelection() {
+            const selectedColor = document.getElementById("colorSelector").value;
+            updateVisualizer(selectedColor);
+        }
+
+        function updateVisualizerFromFrequency() {
+            const frequency = prompt("Enter frequency (Hz):", "432");
+            if (frequency !== null) {
+                const imgSrc = frequencyMap[parseInt(frequency)] || frequencyMap['default'];
+                updateVisualizer(imgSrc);
+            }
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        function requestMicAccess() {
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const analyser = audioContext.createAnalyser();
+                    const microphone = audioContext.createMediaStreamSource(stream);
+                    microphone.connect(analyser);
+                    analyser.fftSize = 256;
+                    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+                    function analyzeFrequency() {
+                        analyser.getByteFrequencyData(dataArray);
+                        const avgFrequency = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+                        const closestFrequency = Object.keys(frequencyMap)
+                            .map(Number)
+                            .reduce((prev, curr) => (Math.abs(curr - avgFrequency) < Math.abs(prev - avgFrequency) ? curr : prev));
+
+                        updateVisualizer(frequencyMap[closestFrequency]);
+                        requestAnimationFrame(analyzeFrequency);
+                    }
+
+                    analyzeFrequency();
+                })
+                .catch(error => alert("Microphone access denied or not supported."));
+        }
+
+        // Set initial background
+        updateVisualizer(frequencyMap['default']);
+    </script>
 </body>
 </html>

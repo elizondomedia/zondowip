@@ -1,187 +1,226 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Zondo Visualizer</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: black;
-      overflow: hidden;
-      height: 100%;
-      width: 100%;
-    }
-    #visualizer-container {
-      position: relative;
-      width: 100%;
-      height: 100vh;
-      overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    #backgroundImage {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      z-index: 0;
-    }
-    #controls {
-      position: absolute;
-      bottom: 20px;
-      left: 20px;
-      z-index: 2;
-      display: flex;
-      align-items: center;
-      background: rgba(0, 0, 0, 0.5);
-      padding: 10px;
-      border-radius: 5px;
-      color: white;
-      font-family: sans-serif;
-    }
-    #controls label, #controls select, #controls button, #controls input {
-      margin: 0 8px;
-    }
-    #mic-status {
-      font-weight: bold;
-      margin-left: 10px;
-    }
-  </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Audio Reactive GIF Visualizer</title>
+  <link rel="stylesheet" href="styles.css" />  <!-- Link to external CSS (styles.css) -->
 </head>
 <body>
-  <div id="visualizer-container">
-    <img id="backgroundImage" src="default_background.png" alt="Background">
-    <div id="controls">
-      <label for="frequencyInput">Frequency:</label>
-      <input type="number" id="frequencyInput" min="144" max="963" step="1">
-      <button id="setFrequencyBtn">Set Frequency</button>
-      
-      <label for="colorSelect">Color:</label>
-      <select id="colorSelect">
-        <option value="WHITE_000.GIF">Default</option>
-        <option value="LIGHTBLUE_144.GIF">Light Blue</option>
-        <option value="LIGHTGREEN_244.GIF">Light Green</option>
-        <option value="PINK_350.GIF">Pink</option>
-        <option value="TEAL_384.GIF">Teal</option>
-        <option value="BURGUNDY_396.GIF">Burgundy</option>
-        <option value="DARKGREEN_400.GIF">Dark Green</option>
-        <option value="DARKPURPLE_432.GIF">Dark Purple</option>
-        <option value="DARKBLUE_480.GIF">Dark Blue</option>
-        <option value="YELLOW_528.GIF">Yellow</option>
-        <option value="TURQUOISE_540.GIF">Turquoise</option>
-        <option value="ORANGE_700.GIF">Orange</option>
-        <option value="LIGHTPURPLE_768.GIF">Light Purple</option>
-        <option value="SILVER_852.GIF">Silver</option>
-        <option value="GOLD_962.GIF">Gold</option>
-      </select>
+  <!-- Background is handled via CSS to ensure it stays visible -->
+  <button id="micButton">🎤 Start Microphone</button>
 
-      <button id="mic-btn">Grant Mic Access</button>
-      <span id="mic-status">Mic: Off</span>
-      <button id="fullscreen-btn">Fullscreen</button>
-    </div>
-  </div>
+  <!-- Dropdown to allow manual GIF selection even while mic is running -->
+  <select id="gifSelector">
+    <option value="AUTO">🔄 Auto (Microphone Controlled)</option>
+    <option value="WHITE_000.GIF">White</option>
+    <option value="LIGHTBLUE_144.GIF">Light Blue</option>
+    <option value="LIGHTGREEN_244.GIF">Light Green</option>
+    <option value="PINK_350.GIF">Pink</option>
+    <option value="TEAL_384.GIF">Teal</option>
+    <option value="BURGUNDY_396.GIF">Burgundy</option>
+    <option value="DARKGREEN_400.GIF">Dark Green</option>
+    <option value="DARKPURPLE_432.GIF">Dark Purple</option>
+    <option value="DARKBLUE_480.GIF">Dark Blue</option>
+    <option value="YELLOW_528.GIF">Yellow</option>
+    <option value="TURQUOISE_540.GIF">Turquoise</option>
+    <option value="ORANGE_700.GIF">Orange</option>
+    <option value="LIGHTPURPLE_768.GIF">Light Purple</option>
+    <option value="SILVER_852.GIF">Silver</option>
+    <option value="GOLD_962.GIF">Gold</option>
+    <option value="gif 1 back.GIF">GIF 1 (Background Effect)</option>
+    <option value="gif 2 pulse.GIF">GIF 2 (Pulse)</option>
+    <option value="gif 2 pulse2.GIF">GIF 2 (Pulse Alt)</option>
+    <option value="Werble-16F7860A03.GIF">Werble Effect</option>
+    <option value="ZONDO GIF.GIF">Zondo Effect</option>
+  </select>
 
-  <script>
-    const frequencyToGif = {
-      144: "LIGHTBLUE_144.GIF",
-      244: "LIGHTGREEN_244.GIF",
-      350: "PINK_350.GIF",
-      384: "TEAL_384.GIF",
-      396: "BURGUNDY_396.GIF",
-      400: "DARKGREEN_400.GIF",
-      432: "DARKPURPLE_432.GIF",
-      480: "DARKBLUE_480.GIF",
-      528: "YELLOW_528.GIF",
-      540: "TURQUOISE_540.GIF",
-      700: "ORANGE_700.GIF",
-      768: "LIGHTPURPLE_768.GIF",
-      852: "SILVER_852.GIF",
-      963: "GOLD_962.GIF",
-      "default": "WHITE_000.GIF"
-    };
+  <!-- Image element to display the active GIF. Starts with a default (silent) GIF -->
+  <img id="gifDisplay" src="WHITE_000.GIF" alt="Audio Visualizer GIF" />
 
-    const backgroundImage = document.getElementById("backgroundImage");
-    const freqInput = document.getElementById("frequencyInput");
-    const setFreqBtn = document.getElementById("setFrequencyBtn");
-    const colorSelect = document.getElementById("colorSelect");
-    const micBtn = document.getElementById("mic-btn");
-    const micStatus = document.getElementById("mic-status");
-    const fullscreenBtn = document.getElementById("fullscreen-btn");
-
-    let audioContext, analyser, microphoneStream, animationFrameId;
-
-    function updateVisualizer() {
-      const freq = parseInt(freqInput.value);
-      if (!isNaN(freq) && frequencyToGif[freq]) {
-        backgroundImage.src = frequencyToGif[freq];
-      } else {
-        alert("Invalid frequency! Please enter a value between 144 and 963.");
-      }
-    }
-
-    function updateColor() {
-      backgroundImage.src = colorSelect.value;
-    }
-
-    function requestMicAccess() {
-      navigator.mediaDevices.getUserMedia({ audio: true })
-        .then(stream => {
-          micStatus.textContent = "Mic: ON";
-          micStatus.style.color = "lime";
-
-          audioContext = new (window.AudioContext || window.webkitAudioContext)();
-          analyser = audioContext.createAnalyser();
-          analyser.fftSize = 256;
-          const source = audioContext.createMediaStreamSource(stream);
-          source.connect(analyser);
-          microphoneStream = stream;
-
-          processMicAudio();
-        })
-        .catch(err => {
-          console.error("Microphone access error:", err);
-          micStatus.textContent = "Mic: Denied";
-          micStatus.style.color = "red";
-          alert("Microphone access denied. Please allow microphone permissions.");
-        });
-    }
-
-    function processMicAudio() {
-      if (!analyser) return;
-      const frequencyData = new Uint8Array(analyser.frequencyBinCount);
-
-      function analyzeFrequency() {
-        analyser.getByteFrequencyData(frequencyData);
-        const maxAmplitude = Math.max(...frequencyData);
-        const dominantIndex = frequencyData.indexOf(maxAmplitude);
-
-        if (maxAmplitude > 0) { 
-          const gifFile = frequencyToGif[dominantIndex] || frequencyToGif["default"];
-          backgroundImage.src = gifFile;
-        }
-
-        animationFrameId = requestAnimationFrame(analyzeFrequency);
-      }
-
-      analyzeFrequency();
-    }
-
-    fullscreenBtn.addEventListener("click", () => {
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen();
-      } else {
-        document.exitFullscreen();
-      }
-    });
-
-    setFreqBtn.addEventListener("click", updateVisualizer);
-    colorSelect.addEventListener("change", updateColor);
-    micBtn.addEventListener("click", requestMicAccess);
-  </script>
+  <script src="app.js"></script>  <!-- Link to external JavaScript (app.js) -->
 </body>
 </html>
+/* Background image covers the entire viewport and stays in place */
+body {
+  margin: 0;
+  padding: 0;
+  background: url('image.png') no-repeat center center fixed;  /* 'image.png' is the background */
+  background-size: cover;
+  overflow: hidden;
+  color: #fff;
+  font-family: sans-serif;
+  text-align: center;
+}
+
+/* Style for the start button and dropdown */
+#micButton {
+  margin: 20px;
+  padding: 10px 20px;
+  font-size: 1rem;
+}
+#gifSelector {
+  margin: 20px;
+  padding: 5px;
+  font-size: 1rem;
+}
+
+/* GIF display styling */
+#gifDisplay {
+  max-width: 80%;
+  max-height: 80%;
+  margin: 20px auto;
+  display: block;
+  transition: opacity 0.5s ease;  /* Smooth transition for fading */
+}
+
+/* Fade-out class (used before switching GIF) */
+.fade-out {
+  opacity: 0;
+}
+/* Fade-in class (used after switching GIF) */
+.fade-in {
+  opacity: 1;
+}
+// List of all GIF filenames (ensure these files are in the same directory)
+const allGifs = [
+  "WHITE_000.GIF", "LIGHTBLUE_144.GIF", "LIGHTGREEN_244.GIF", "PINK_350.GIF",
+  "TEAL_384.GIF", "BURGUNDY_396.GIF", "DARKGREEN_400.GIF", "DARKPURPLE_432.GIF",
+  "DARKBLUE_480.GIF", "YELLOW_528.GIF", "TURQUOISE_540.GIF", "ORANGE_700.GIF",
+  "LIGHTPURPLE_768.GIF", "SILVER_852.GIF", "GOLD_962.GIF",
+  "gif 1 back.GIF", "gif 2 pulse.GIF", "gif 2 pulse2.GIF",
+  "Werble-16F7860A03.GIF", "ZONDO GIF.GIF"
+];
+
+// Preload all GIF images to ensure smooth switching without delays
+const preloadedImages = {};
+allGifs.forEach(src => {
+  const img = new Image();
+  img.src = src;
+  preloadedImages[src] = img;
+});
+
+// Mapping from audio volume thresholds to corresponding GIFs (sorted ascending by threshold)
+const gifThresholds = [
+  { threshold: 0, file: "WHITE_000.GIF" },
+  { threshold: 144, file: "LIGHTBLUE_144.GIF" },
+  { threshold: 244, file: "LIGHTGREEN_244.GIF" },
+  { threshold: 350, file: "PINK_350.GIF" },
+  { threshold: 384, file: "TEAL_384.GIF" },
+  { threshold: 396, file: "BURGUNDY_396.GIF" },
+  { threshold: 400, file: "DARKGREEN_400.GIF" },
+  { threshold: 432, file: "DARKPURPLE_432.GIF" },
+  { threshold: 480, file: "DARKBLUE_480.GIF" },
+  { threshold: 528, file: "YELLOW_528.GIF" },
+  { threshold: 540, file: "TURQUOISE_540.GIF" },
+  { threshold: 700, file: "ORANGE_700.GIF" },
+  { threshold: 768, file: "LIGHTPURPLE_768.GIF" },
+  { threshold: 852, file: "SILVER_852.GIF" },
+  { threshold: 962, file: "GOLD_962.GIF" }
+];
+
+// Get references to DOM elements
+const gifImage = document.getElementById('gifDisplay');
+const micButton = document.getElementById('micButton');
+const gifSelector = document.getElementById('gifSelector');
+
+// State variables
+let audioContext, analyser, microphoneStream;
+let autoMode = true;            // whether GIF is controlled by mic (auto) or manually
+let currentGif = gifImage.src;  // current displayed GIF filename
+let smoothedVolume = 0;         // for smoothing the volume to avoid abrupt jumps
+
+// Function to smoothly transition to a new GIF image
+function showGif(newSrc) {
+  if (newSrc === currentGif) return;  // do nothing if it's already the current GIF
+
+  // Fade out the current GIF, then change the source, then fade back in
+  gifImage.style.opacity = 0;
+  gifImage.onload = () => { 
+    // Once the new image is loaded, fade it in
+    gifImage.style.opacity = 1;
+  };
+  // Update the image source (will trigger onload when the image is ready)
+  gifImage.src = newSrc;
+  currentGif = newSrc;
+}
+
+// Function to analyze audio and update GIF in real time
+function analyzeAudio() {
+  if (!autoMode || !analyser) {
+    // If not in auto mode or audio not initialized, just loop again
+    requestAnimationFrame(analyzeAudio);
+    return;
+  }
+
+  // Get audio data (time domain waveform)
+  const bufferLength = analyser.fftSize;
+  const timeData = new Uint8Array(bufferLength);
+  analyser.getByteTimeDomainData(timeData);
+
+  // Compute volume as RMS (root mean square) of deviations from silence
+  let sumSquares = 0;
+  for (let i = 0; i < bufferLength; i++) {
+    const deviation = timeData[i] - 128;
+    sumSquares += deviation * deviation;
+  }
+  const rms = Math.sqrt(sumSquares / bufferLength);
+  const volume = rms * 8;  // scale up RMS to a 0-1024 range (approx)
+
+  // Smooth the volume to prevent jittery rapid changes (low-pass filter)
+  smoothedVolume = smoothedVolume * 0.8 + volume * 0.2;
+
+  // Determine which GIF corresponds to the current smoothed volume
+  let targetGif = gifThresholds[0].file;  // default to the lowest (silence)
+  for (let i = 0; i < gifThresholds.length; i++) {
+    if (smoothedVolume >= gifThresholds[i].threshold) {
+      targetGif = gifThresholds[i].file;
+    } else {
+      break;  // since list is sorted, no need to check further once this fails
+    }
+  }
+
+  // If the target GIF based on volume is different, switch to it with a transition
+  if (targetGif !== currentGif && autoMode) {
+    showGif(targetGif);
+  }
+
+  // Continue the animation loop
+  requestAnimationFrame(analyzeAudio);
+}
+
+// Event handler: user selects a GIF from the dropdown
+gifSelector.addEventListener('change', function() {
+  const selectedValue = this.value;
+  if (selectedValue === "AUTO") {
+    // Switch back to microphone-controlled mode
+    autoMode = true;
+  } else {
+    // Switch to manual mode and display the selected GIF
+    autoMode = false;
+    showGif(selectedValue);
+  }
+});
+
+// Event handler: user clicks the Start Microphone button
+micButton.addEventListener('click', function() {
+  if (audioContext) {
+    return;  // Already running
+  }
+  // Ask for microphone access
+  navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+    .then(stream => {
+      // Create AudioContext and analyser
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 1024;  // FFT size for audio analysis (controls resolution)
+      const source = audioContext.createMediaStreamSource(stream);
+      source.connect(analyser);
+
+      // Start the analysis loop
+      analyzeAudio();
+    })
+    .catch(err => {
+      console.error('Microphone access denied or error:', err);
+    });
+});

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zondo Visualizer</title>
+    <style>
+        body {
+            background-color: black;
+            color: white;
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+        #visualizer {
+            width: 100%;
+            height: 500px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+    <script>
+        function getFrequencyColor(frequency) {
+            const colors = {
+                144: 'LIGHTBLUE_144.GIF',
+                244: 'LIGHTGREEN_244.GIF',
+                350: 'PINK_350.GIF',
+                384: 'TEAL_384.GIF',
+                396: 'BURGUNDY_396.GIF',
+                400: 'DARKGREEN_400.GIF',
+                432: 'DARKPURPLE_432.GIF',
+                480: 'DARKBLUE_480.GIF',
+                528: 'YELLOW_528.GIF',
+                540: 'TURQUOISE_540.GIF',
+                700: 'ORANGE_700.GIF',
+                768: 'LIGHTPURPLE_768.GIF',
+                852: 'SILVER_852.GIF',
+                963: 'GOLD_962.GIF',
+                'default': 'WHITE_000.GIF'
+            };
+            return colors[frequency] || colors['default'];
+        }
+
+        function updateVisualizer() {
+            const frequency = prompt("Enter frequency (Hz):", "432");
+            if (frequency !== null) {
+                const imgSrc = getFrequencyColor(parseInt(frequency));
+                document.getElementById("visualizer").innerHTML = `<img src="${imgSrc}" alt="Visualizer Animation">`;
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>Zondo Visualizer</h1>
+    <p>Experience the frequency-based color dynamics.</p>
+    <div id="visualizer">
+        <p>Visualizer Placeholder</p>
+    </div>
+    <button onclick="updateVisualizer()">Set Frequency</button>
+</body>
+</html>

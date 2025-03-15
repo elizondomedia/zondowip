@@ -11,12 +11,24 @@
             text-align: center;
             font-family: Arial, sans-serif;
         }
-        #visualizer {
+        #container {
+            position: relative;
             width: 100%;
             height: 500px;
             display: flex;
             align-items: center;
             justify-content: center;
+        }
+        #background {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.5; /* Adjust transparency if needed */
+        }
+        #visualizer {
+            position: relative;
+            z-index: 1;
         }
         img {
             max-width: 100%;
@@ -57,9 +69,14 @@
 <body>
     <h1>Zondo Visualizer</h1>
     <p>Experience the frequency-based color dynamics.</p>
-    <div id="visualizer">
-        <p>Visualizer Placeholder</p>
+
+    <div id="container">
+        <img id="background" src="static_back.gif" alt="Static Background">
+        <div id="visualizer">
+            <p>Visualizer Placeholder</p>
+        </div>
     </div>
+
     <button onclick="updateVisualizer()">Set Frequency</button>
 </body>
 </html>

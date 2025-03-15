@@ -101,4 +101,87 @@
       700: "ORANGE_700.GIF",
       768: "LIGHTPURPLE_768.GIF",
       852: "SILVER_852.GIF",
-      963: "GOLD_
+      963: "GOLD_962.GIF",
+      "default": "WHITE_000.GIF"
+    };
+
+    const backgroundImage = document.getElementById("backgroundImage");
+    const freqInput = document.getElementById("frequencyInput");
+    const setFreqBtn = document.getElementById("setFrequencyBtn");
+    const colorSelect = document.getElementById("colorSelect");
+    const micBtn = document.getElementById("mic-btn");
+    const micStatus = document.getElementById("mic-status");
+    const fullscreenBtn = document.getElementById("fullscreen-btn");
+
+    let audioContext, analyser, microphoneStream, animationFrameId;
+
+    function updateVisualizer() {
+      const freq = parseInt(freqInput.value);
+      if (!isNaN(freq) && frequencyToGif[freq]) {
+        backgroundImage.src = frequencyToGif[freq];
+      } else {
+        alert("Invalid frequency! Please enter a value between 144 and 963.");
+      }
+    }
+
+    function updateColor() {
+      backgroundImage.src = colorSelect.value;
+    }
+
+    function requestMicAccess() {
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+          micStatus.textContent = "Mic: ON";
+          micStatus.style.color = "lime";
+
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          analyser = audioContext.createAnalyser();
+          analyser.fftSize = 256;
+          const source = audioContext.createMediaStreamSource(stream);
+          source.connect(analyser);
+          microphoneStream = stream;
+
+          processMicAudio();
+        })
+        .catch(err => {
+          console.error("Microphone access error:", err);
+          micStatus.textContent = "Mic: Denied";
+          micStatus.style.color = "red";
+          alert("Microphone access denied. Please allow microphone permissions.");
+        });
+    }
+
+    function processMicAudio() {
+      if (!analyser) return;
+      const frequencyData = new Uint8Array(analyser.frequencyBinCount);
+
+      function analyzeFrequency() {
+        analyser.getByteFrequencyData(frequencyData);
+        const maxAmplitude = Math.max(...frequencyData);
+        const dominantIndex = frequencyData.indexOf(maxAmplitude);
+
+        if (maxAmplitude > 0) { 
+          const gifFile = frequencyToGif[dominantIndex] || frequencyToGif["default"];
+          backgroundImage.src = gifFile;
+        }
+
+        animationFrameId = requestAnimationFrame(analyzeFrequency);
+      }
+
+      analyzeFrequency();
+    }
+
+    fullscreenBtn.addEventListener("click", () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+      } else {
+        document.exitFullscreen();
+      }
+    });
+
+    setFreqBtn.addEventListener("click", updateVisualizer);
+    colorSelect.addEventListener("change", updateColor);
+    micBtn.addEventListener("click", requestMicAccess);
+  </script>
+</body>
+</html>

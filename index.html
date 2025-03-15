@@ -221,16 +221,40 @@
     });
 
     // Handle color selection changes
-    colorSelectElem.addEventListener("change", (e) => {
-      const colorChoice = e.target.value;
-      if (colorChoice === "default") {
-        // No tint (fully transparent overlay)
-        colorOverlayElem.style.backgroundColor = "transparent";
-      } else {
-        // Apply selected color tint overlay
-        colorOverlayElem.style.backgroundColor = colorChoice;
-      }
-    });
+ let selectedColor = "default"; // Stores selected color for all frequencies
+
+document.getElementById("colorSelect").addEventListener("change", function() {
+    selectedColor = this.value; 
+    updateVisualizer(); // Update visualizer with new selection
+});
+
+function getFrequencyGif(frequency) {
+    const gifs = {
+        "Light Blue": "LIGHTBLUE_144.GIF",
+        "Light Green": "LIGHTGREEN_244.GIF",
+        "Pink": "PINK_350.GIF",
+        "Teal": "TEAL_384.GIF",
+        "Burgundy": "BURGUNDY_396.GIF",
+        "Dark Green": "DARKGREEN_400.GIF",
+        "Dark Purple": "DARKPURPLE_432.GIF",
+        "Dark Blue": "DARKBLUE_480.GIF",
+        "Yellow": "YELLOW_528.GIF",
+        "Turquoise": "TURQUOISE_540.GIF",
+        "Orange": "ORANGE_700.GIF",
+        "Light Purple": "LIGHTPURPLE_768.GIF",
+        "Silver": "SILVER_852.GIF",
+        "Gold": "GOLD_962.GIF",
+        "default": "WHITE_000.GIF"
+    };
+    return gifs[selectedColor] || gifs["default"];
+}
+
+function updateVisualizer() {
+    const frequency = document.getElementById("frequencyInput").value;
+    const imgSrc = getFrequencyGif(frequency);
+    document.getElementById("visualizer").innerHTML = `<img src="${imgSrc}" alt="Visualizer Animation">`;
+}
+
 
     // Fullscreen toggle functionality
     fullscreenBtn.addEventListener("click", () => {

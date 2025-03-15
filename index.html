@@ -128,29 +128,24 @@
     });
 
     // Request microphone access
-    micButton.addEventListener("click", () => {
-      if (navigator.mediaDevices.getUserMedia) {
-        navigator.mediaDevices.getUserMedia({ audio: true })
-          .then((stream) => {
-            micStatus.textContent = "Mic: ON";
-            micStatus.style.color = "lime";
-            micButton.disabled = true;
+    micButton.addEventListener("click", async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        micStatus.textContent = "Mic: ON";
+        micStatus.style.color = "lime";
+        micButton.disabled = true;
 
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            analyser = audioContext.createAnalyser();
-            analyser.fftSize = 256;
-            micStream = audioContext.createMediaStreamSource(stream);
-            micStream.connect(analyser);
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        micStream = audioContext.createMediaStreamSource(stream);
+        micStream.connect(analyser);
 
-            processMicAudio();
-          })
-          .catch((error) => {
-            console.error("Mic Access Denied:", error);
-            micStatus.textContent = "Mic: Denied";
-            micStatus.style.color = "red";
-          });
-      } else {
-        alert("Microphone access is not supported in this browser.");
+        processMicAudio();
+      } catch (error) {
+        console.error("Mic Access Denied:", error);
+        micStatus.textContent = "Mic: Denied";
+        micStatus.style.color = "red";
       }
     });
 
@@ -160,14 +155,15 @@
 
       function analyzeFrequency() {
         analyser.getByteFrequencyData(dataArray);
-        if (dataArray.length === 0) return; // Prevents reduce() on empty array error
+        if (dataArray.some(value => value > 0)) {
+          let avgFrequency = dataArray.reduce((sum, val) => sum + val, 0) / dataArray.length || 144;
+          let closestFrequency = Object.keys(getFrequencyGif()).map(Number).reduce((prev, curr) =>
+            Math.abs(curr - avgFrequency) < Math.abs(prev - avgFrequency) ? curr : prev
+          );
 
-        let avgFrequency = dataArray.reduce((sum, val) => sum + val, 0) / dataArray.length || 144;
-        let closestFrequency = Object.keys(getFrequencyGif()).map(Number).reduce((prev, curr) =>
-          Math.abs(curr - avgFrequency) < Math.abs(prev - avgFrequency) ? curr : prev
-        );
+          visualizer.src = getFrequencyGif(closestFrequency);
+        }
 
-        visualizer.src = getFrequencyGif(closestFrequency);
         animationFrameId = requestAnimationFrame(analyzeFrequency);
       }
       analyzeFrequency();

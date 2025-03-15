@@ -1,113 +1,39 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Zondo :) Audio Visualizer</title>
-  <style>
-    body {
-      margin: 0;
-      background: #000;
-      color: #fff;
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      overflow: hidden;
-    }
-    #fullscreenBtn {
-      position: absolute;
-      top: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 10px 15px;
-      font-size: 16px;
-      background: #007bff;
-      color: white;
-      border: none;
-      cursor: pointer;
-      z-index: 10;
-    }
-    #fullscreenBtn:hover {
-      background: #0056b3;
-    }
-    .visualizer-container {
-      position: relative;
-      width: 100vw;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-    .background-gif, .pulse-gif {
-      position: absolute;
-      max-width: 80%;
-      max-height: 80%;
-      object-fit: contain;
-    }
-    .pulse-gif {
-      opacity: 0;
-      transition: opacity 0.3s ease-in-out;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zondo Visualizer</title>
+    <style>
+        body {
+            background-color: black;
+            color: white;
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            margin-top: 50px;
+        }
+    </style>
 </head>
 <body>
-  <button id="fullscreenBtn">View in Fullscreen</button>
-  <div class="visualizer-container">
-    <img id="backgroundGif" class="background-gif" src="gif_1_back.GIF" alt="Background Animation">
-    <img id="pulseGif" class="pulse-gif" src="gif_2_pulse.GIF" alt="Pulse Animation">
-    <img id="pulseGif2" class="pulse-gif" src="gif_2_pulse2.GIF" alt="Pulse Animation 2">
-  </div>
-
-  <script>
-    const fullscreenBtn = document.getElementById("fullscreenBtn");
-    const pulseGif = document.getElementById("pulseGif");
-    const pulseGif2 = document.getElementById("pulseGif2");
-    let audioCtx, analyser, dataArray;
-
-    fullscreenBtn.addEventListener("click", () => {
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen();
-      } else {
-        document.exitFullscreen();
-      }
-    });
-
-    async function setupMicrophone() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        analyser = audioCtx.createAnalyser();
-        analyser.fftSize = 512;
-        dataArray = new Uint8Array(analyser.frequencyBinCount);
-        const micSource = audioCtx.createMediaStreamSource(stream);
-        micSource.connect(analyser);
-        animateVisualizer();
-      } catch (err) {
-        alert("Zondo :) needs microphone access for visualization. Enable in settings.");
-      }
-    }
-
-    function animateVisualizer() {
-      requestAnimationFrame(animateVisualizer);
-      analyser.getByteFrequencyData(dataArray);
-      let avgVolume = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-
-      if (avgVolume > 50) {
-        pulseGif.style.opacity = "1";
-        pulseGif2.style.opacity = "0";
-      } else if (avgVolume > 30) {
-        pulseGif.style.opacity = "0";
-        pulseGif2.style.opacity = "1";
-      } else {
-        pulseGif.style.opacity = "0";
-        pulseGif2.style.opacity = "0";
-      }
-    }
-
-    setupMicrophone();
-  </script>
+    <div class="container">
+        <h1>Zondo Visualizer</h1>
+        <p>Experience the frequency-based color dynamics.</p>
+        <canvas id="visualizerCanvas"></canvas>
+    </div>
+    <script>
+        // Placeholder JavaScript for visualizer functionality.
+        document.addEventListener('DOMContentLoaded', function() {
+            let canvas = document.getElementById('visualizerCanvas');
+            let ctx = canvas.getContext('2d');
+            
+            canvas.width = window.innerWidth * 0.8;
+            canvas.height = window.innerHeight * 0.6;
+            ctx.fillStyle = 'white';
+            ctx.font = '24px Arial';
+            ctx.fillText('Visualizer Placeholder', canvas.width / 3, canvas.height / 2);
+        });
+    </script>
 </body>
 </html>

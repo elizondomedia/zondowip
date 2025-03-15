@@ -91,6 +91,23 @@
       transition: opacity 0.5s ease;
     }
 
+    /* Flashing Active Frequency Display */
+    #activeFrequency {
+      position: absolute;
+      top: 50px;
+      right: 20px;
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: white;
+      text-shadow: 0px 0px 10px white;
+      animation: flashText 0.5s infinite alternate;
+    }
+
+    @keyframes flashText {
+      0% { opacity: 1; }
+      100% { opacity: 0.5; }
+    }
+
     /* Adjust Legend & Scaling for Mobile */
     @media screen and (max-width: 600px) {
       #legend {
@@ -109,6 +126,12 @@
       #controls {
         flex-direction: column;
       }
+
+      #activeFrequency {
+        top: 40px;
+        right: 10px;
+        font-size: 1rem;
+      }
     }
 
     /* Hide Legend in Fullscreen */
@@ -125,6 +148,9 @@
 
   <!-- GIF Display (Animated Visualizer) -->
   <img id="gifDisplay" src="WHITE_000.GIF" alt="Audio Visualizer GIF">
+
+  <!-- Active Frequency Display -->
+  <div id="activeFrequency">Hz: --</div>
 
   <!-- Controls -->
   <div id="controls">
@@ -193,10 +219,8 @@
       { threshold: 962, file: "GOLD_962.GIF" }
     ];
 
+    const activeFrequencyText = document.getElementById("activeFrequency");
     const gifImage = document.getElementById("gifDisplay");
-    const micButton = document.getElementById("micButton");
-    const gifSelector = document.getElementById("gifSelector");
-    const fullscreenButton = document.getElementById("fullscreenButton");
 
     function analyzeAudio() {
       if (!autoMode || !analyser) return;
@@ -204,18 +228,19 @@
       analyser.getByteFrequencyData(dataArray);
       const volume = Math.max(...dataArray);
       const targetGif = gifThresholds.find(t => volume >= t.threshold)?.file || "WHITE_000.GIF";
+
       if (targetGif !== currentGif) gifImage.src = targetGif;
+      activeFrequencyText.textContent = `Hz: ${volume}`;
+
       requestAnimationFrame(analyzeAudio);
     }
 
-    micButton.onclick = () => navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+    document.getElementById("micButton").onclick = () => navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
       audioContext = new AudioContext();
       analyser = audioContext.createAnalyser();
       audioContext.createMediaStreamSource(stream).connect(analyser);
       analyzeAudio();
     });
-
-    fullscreenButton.onclick = () => document.fullscreenElement ? document.exitFullscreen() : document.body.requestFullscreen();
   </script>
 </body>
 </html>

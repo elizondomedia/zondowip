@@ -1,255 +1,363 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Zondo Visualizer</title>
   <style>
-    /* General Styling */
-    body {
+    /* Reset and base styles */
+    html, body {
       margin: 0;
       padding: 0;
-      background: black;
-      overflow: hidden;
-      color: #fff;
-      font-family: sans-serif;
-      text-align: center;
+      height: 100%;
+      background: #000; /* Fallback background color */
+      overflow: hidden; /* Prevent scrolling */
     }
 
-    /* Background Image */
-    #backgroundImage {
+    /* Background container fills the screen */
+    #bgContainer {
       position: fixed;
       top: 0;
       left: 0;
-      width: 100vw;
-      height: 100vh;
-      object-fit: cover;
-      z-index: -2;
+      width: 100%;
+      height: 100%;
+      z-index: -2;  /* behind everything */
+      overflow: hidden;
+    }
+    /* Background images (GIFs) style for proper scaling */
+    .bgImage {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;       /* Fill container without distortion */
+      /* center image (object-position defaults to center if not specified) */
+      transition: opacity 1s ease;  /* Smooth fade transition */
+      opacity: 1;
+      pointer-events: none;    /* Allow clicks to pass through background */
     }
 
-    /* GIF Display */
-    #gifDisplay {
+    /* Canvas for visualizer (fills screen) */
+    #visualizer {
       position: fixed;
-      top: 50%;
-      left: 50%;
-      width: 100vw;
-      height: 100vh;
-      object-fit: contain;
-      transform: translate(-50%, -50%);
-      z-index: -1;
-      transition: opacity 0.5s ease-in-out;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;  /* just above background, behind UI */
     }
 
-    /* Controls Panel */
-    #controls {
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.7);
-      padding: 10px;
-      border-radius: 10px;
+    /* Top bar for controls and active frequency display */
+    #topBar {
+      position: fixed;
+      top: 10px;
+      left: 0;
+      width: 100%;
+      padding: 0 10px;
       display: flex;
-      flex-wrap: wrap;
+      justify-content: space-between;
       align-items: center;
-      gap: 10px;
+      flex-wrap: nowrap;
+      z-index: 2;  /* above canvas */
+      color: #fff;
+      font-family: Arial, sans-serif;
+    }
+    #leftControls, #rightControls {
+      display: flex;
+      align-items: center;
+    }
+    #leftControls button, #rightControls button {
+      margin: 0 5px;
     }
 
-    /* Button & Select Styling */
-    button, select {
-      padding: 10px;
-      font-size: 1rem;
-      border-radius: 5px;
-      border: none;
-      cursor: pointer;
-    }
-
-    button {
-      background: #33E4F4;
-      color: white;
-    }
-
-    button:hover {
-      background: #F41FEA;
-    }
-
-    select {
-      background: white;
-      color: black;
-    }
-
-    /* Flashing Real-Time Frequency Display */
-    #activeFrequency {
-      position: absolute;
-      top: 10px;
-      right: 20px;
+    /* Active frequency display text */
+    #freqDisplay {
       font-size: 1.5rem;
-      font-weight: bold;
-      color: white;
-      text-shadow: 0px 0px 10px white;
-      animation: flashText 0.5s infinite alternate;
+      text-shadow: 0 0 5px #000;
+      /* Subtle pulsing animation for flashing effect */
+      animation: flashAnim 1.2s infinite alternate ease-in-out;
+    }
+    @keyframes flashAnim {
+      0%   { opacity: 1; }
+      100% { opacity: 0.6; }
     }
 
-    @keyframes flashText {
-      0% { opacity: 1; }
-      100% { opacity: 0.5; }
-    }
-
-    /* Collapsible Frequency Legend */
-    #legendContainer {
-      position: absolute;
-      top: 10px;
-      left: 20px;
-      background: rgba(0, 0, 0, 0.8);
+    /* Frequency mapping box (legend) */
+    #freqBox {
+      position: fixed;
+      bottom: 10px;
+      right: 10px;
+      background: rgba(0, 0, 0, 0.7);
+      color: #fff;
       padding: 10px;
-      border-radius: 10px;
-      font-size: 0.9rem;
-      text-align: left;
-      max-width: 250px;
-      transition: max-height 0.5s ease, opacity 0.5s ease;
+      border-radius: 5px;
+      max-height: 200px;   /* maximum expanded height */
+      overflow: hidden;
+      opacity: 1;
+      transition: max-height 0.5s ease, opacity 0.5s ease, padding 0.5s ease;
+      z-index: 2;
+      font-family: Arial, sans-serif;
+      font-size: 0.95rem;
     }
-
-    #legendContent {
-      display: none;
-    }
-
-    .fullscreen #legendContainer {
+    #freqBox.collapsed {
+      max-height: 0;
       opacity: 0;
-      transition: opacity 0.5s ease;
+      padding: 0 10px;
+    }
+    #freqBox h3 {
+      margin: 0 0 5px 0;
+      font-size: 1.1rem;
+    }
+    #freqBox ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    #freqBox li {
+      margin: 3px 0;
     }
 
-    /* Mobile Adjustments */
-    @media screen and (max-width: 600px) {
-      #gifDisplay {
-        width: 100vw;
-        height: 100vh;
+    /* Responsive adjustments for smaller screens */
+    @media (max-width: 600px) {
+      #topBar {
+        flex-wrap: wrap;
+        justify-content: center;
+        text-align: center;
       }
-
-      #controls {
-        flex-direction: column;
+      #leftControls, #rightControls {
+        width: 100%;
+        justify-content: center;
+        margin: 5px 0;
       }
-
-      #activeFrequency {
-        top: 40px;
-        right: 10px;
-        font-size: 1rem;
+      #freqDisplay {
+        width: 100%;
+        margin: 5px 0;
+        order: -1;  /* move frequency display to top in flex order if needed */
       }
-
-      #legendContainer {
-        top: auto;
-        bottom: 80px;
-        left: 10px;
-        font-size: 0.8rem;
+      #freqBox {
+        bottom: 5%;
+        right: 5%;
+        left: 5%;
+        width: auto;
+        max-width: 90%;
+        font-size: 0.9rem;
       }
     }
   </style>
 </head>
 <body>
 
-  <!-- Static Background Image -->
-  <img id="backgroundImage" src="default_background.png" alt="Background">
+  <!-- Background container with initial GIF -->
+  <div id="bgContainer">
+    <img src="bg1.gif" class="bgImage" id="currentBg" alt="Background Animation">
+  </div>
 
-  <!-- GIF Display -->
-  <img id="gifDisplay" src="WHITE_000.GIF" alt="Audio Visualizer GIF">
+  <!-- Canvas for the audio visualizer -->
+  <canvas id="visualizer"></canvas>
 
-  <!-- Active Frequency Display -->
-  <div id="activeFrequency">Hz: --</div>
-
-  <!-- Collapsible Frequency Legend -->
-  <div id="legendContainer">
-    <button id="legendToggle">📜 Show Frequencies</button>
-    <div id="legendContent">
-      <strong>Frequency - Color Mapping</strong><br>
-      144Hz - Light Blue<br>
-      244Hz - Light Green<br>
-      350Hz - Pink<br>
-      384Hz - Teal<br>
-      396Hz - Burgundy<br>
-      400Hz - Dark Green<br>
-      432Hz - Dark Purple<br>
-      480Hz - Dark Blue<br>
-      528Hz - Yellow<br>
-      540Hz - Turquoise<br>
-      700Hz - Orange<br>
-      768Hz - Light Purple<br>
-      852Hz - Silver<br>
-      963Hz - Gold<br>
-      All Other Hz - "White Noise"
+  <!-- Top bar UI: controls and display -->
+  <div id="topBar">
+    <div id="leftControls">
+      <button id="micButton">Start Mic</button>
+    </div>
+    <div id="freqDisplay">0 Hz</div>
+    <div id="rightControls">
+      <button id="bgButton">Change Background</button>
+      <button id="freqToggle">Hide Freq Box</button>
     </div>
   </div>
 
-  <!-- Controls -->
-  <div id="controls">
-    <button id="micButton">🎤 Start Microphone</button>
-    <button id="fullscreenButton">⛶ Fullscreen</button>
-    <select id="gifSelector">
-      <option value="AUTO">🔄 Auto (Mic Controlled)</option>
-      <option value="LIGHTBLUE_144.GIF">Light Blue</option>
-      <option value="LIGHTGREEN_244.GIF">Light Green</option>
-      <option value="PINK_350.GIF">Pink</option>
-      <option value="TEAL_384.GIF">Teal</option>
-      <option value="BURGUNDY_396.GIF">Burgundy</option>
-      <option value="DARKGREEN_400.GIF">Dark Green</option>
-      <option value="DARKPURPLE_432.GIF">Dark Purple</option>
-      <option value="DARKBLUE_480.GIF">Dark Blue</option>
-      <option value="YELLOW_528.GIF">Yellow</option>
-      <option value="TURQUOISE_540.GIF">Turquoise</option>
-      <option value="ORANGE_700.GIF">Orange</option>
-      <option value="LIGHTPURPLE_768.GIF">Light Purple</option>
-      <option value="SILVER_852.GIF">Silver</option>
-      <option value="GOLD_962.GIF">Gold</option>
-    </select>
+  <!-- Frequency mapping legend (collapsible) -->
+  <div id="freqBox">
+    <h3>Frequency Ranges</h3>
+    <ul>
+      <li>Sub-Bass: 20 - 60 Hz</li>
+      <li>Bass: 60 - 250 Hz</li>
+      <li>Low Mid: 250 - 500 Hz</li>
+      <li>Mid: 500 - 2000 Hz</li>
+      <li>High Mid: 2 - 6 kHz</li>
+      <li>Treble: 6 - 20 kHz</li>
+    </ul>
   </div>
 
   <script>
-    let autoMode = true;
-    let currentGif = "WHITE_000.GIF";
+    // JavaScript for audio analysis and interactive UI
+    const visualizerCanvas = document.getElementById('visualizer');
+    const canvasCtx = visualizerCanvas.getContext('2d');
+    const freqDisplay = document.getElementById('freqDisplay');
+    const freqBox = document.getElementById('freqBox');
+    const freqToggleBtn = document.getElementById('freqToggle');
+    const micButton = document.getElementById('micButton');
+    const bgButton = document.getElementById('bgButton');
+    const bgContainer = document.getElementById('bgContainer');
 
-    const gifImage = document.getElementById("gifDisplay");
-    const micButton = document.getElementById("micButton");
-    const gifSelector = document.getElementById("gifSelector");
-    const fullscreenButton = document.getElementById("fullscreenButton");
-    const activeFrequencyText = document.getElementById("activeFrequency");
-    const legendToggle = document.getElementById("legendToggle");
-    const legendContent = document.getElementById("legendContent");
+    // List of background GIFs to cycle through (replace with your own file names or URLs as needed)
+    const backgrounds = ['bg1.gif', 'bg2.gif', 'bg3.gif'];
+    let currentBgIndex = 0;
+    let bgTransitionInProgress = false;
 
-    function changeGif(newSrc) {
-      if (newSrc !== currentGif) {
-        gifImage.style.opacity = 0;
-        setTimeout(() => {
-          gifImage.src = newSrc;
-          gifImage.onload = () => gifImage.style.opacity = 1;
-        }, 250);
-        currentGif = newSrc;
-      }
+    // Audio context and analyzer
+    let audioCtx, analyser, micStream;
+    let animationId = null;
+    let isMicActive = false;
+
+    // Resize canvas to full window size (support high-DPI screens)
+    function resizeCanvas() {
+      visualizerCanvas.width = window.innerWidth * window.devicePixelRatio;
+      visualizerCanvas.height = window.innerHeight * window.devicePixelRatio;
+      visualizerCanvas.style.width = window.innerWidth + 'px';
+      visualizerCanvas.style.height = window.innerHeight + 'px';
+      canvasCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    }
+    // Initial canvas size setup and update on window resize
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    // Function to smoothly switch background GIFs with a fade transition
+    function changeBackground(nextSrc) {
+      if (bgTransitionInProgress) return;  // prevent multiple rapid clicks
+      bgTransitionInProgress = true;
+
+      const newBg = document.createElement('img');
+      newBg.src = nextSrc;
+      newBg.className = 'bgImage';
+      newBg.style.opacity = '0';  // start transparent
+      newBg.alt = 'Background Animation';
+
+      // Append the new background image on top of current
+      bgContainer.appendChild(newBg);
+      // Slight delay to allow image to be appended before starting transition
+      requestAnimationFrame(() => {
+        newBg.style.opacity = '1';  // fade in new background
+      });
+
+      // After transition, remove the old background image(s)
+      setTimeout(() => {
+        const images = bgContainer.getElementsByClassName('bgImage');
+        // Remove all but the last image (the new current background)
+        while (images.length > 1) {
+          bgContainer.removeChild(images[0]);
+        }
+        bgTransitionInProgress = false;
+      }, 1000);  // match the CSS transition duration (1s)
     }
 
-    micButton.addEventListener("click", () => {
-      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-        const audioContext = new AudioContext();
-        const analyser = audioContext.createAnalyser();
-        analyser.fftSize = 256;
-        audioContext.createMediaStreamSource(stream).connect(analyser);
+    // Audio visualization loop: draws frequency bars and updates active frequency
+    function renderFrame() {
+      animationId = requestAnimationFrame(renderFrame);
+      if (!analyser) return;
 
-        function analyzeAudio() {
-          const dataArray = new Uint8Array(analyser.frequencyBinCount);
-          analyser.getByteFrequencyData(dataArray);
-          const volume = Math.max(...dataArray);
-          activeFrequencyText.textContent = `Hz: ${Math.floor(volume)}`;
+      const freqData = new Uint8Array(analyser.frequencyBinCount);
+      analyser.getByteFrequencyData(freqData);
 
-          requestAnimationFrame(analyzeAudio);
+      // Clear canvas
+      canvasCtx.clearRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
+      const width = visualizerCanvas.width;
+      const height = visualizerCanvas.height;
+      const barCount = 64;  // number of bars to draw
+      const binSize = Math.floor(freqData.length / barCount);
+
+      // Draw frequency bars
+      for (let i = 0; i < barCount; i++) {
+        // Compute average value for this bar's frequency range
+        let sum = 0;
+        for (let j = 0; j < binSize; j++) {
+          sum += freqData[i * binSize + j];
         }
+        const avg = sum / binSize;
+        const barHeight = (avg / 255) * height;  // scale to canvas height
+        const barWidth = width / barCount;
+        const x = i * barWidth;
+        const y = height - barHeight;
+        // Set bar color (semi-transparent for overlay effect)
+        canvasCtx.fillStyle = 'rgba(0, 255, 255, 0.75)';  // cyan with some transparency
+        canvasCtx.fillRect(x, y, barWidth - 2, barHeight); // -2 for small gap between bars
+      }
 
-        analyzeAudio();
+      // Find dominant frequency (peak frequency)
+      let maxVal = 0;
+      let maxIndex = 0;
+      for (let i = 0; i < freqData.length; i++) {
+        if (freqData[i] > maxVal) {
+          maxVal = freqData[i];
+          maxIndex = i;
+        }
+      }
+      // Convert index to frequency in Hz
+      const nyquist = audioCtx.sampleRate / 2;
+      const dominantFreq = Math.round((maxIndex / analyser.frequencyBinCount) * nyquist);
+      // Update the active frequency display
+      freqDisplay.textContent = dominantFreq + ' Hz';
+    }
+
+    // Start microphone audio capture and visualization
+    function startMic() {
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+        micStream = stream;
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 1024;  // FFT size for frequency analysis (1024 -> 512 frequency bins)
+        const source = audioCtx.createMediaStreamSource(stream);
+        source.connect(analyser);
+        isMicActive = true;
+        // Start the visualization loop
+        renderFrame();
+      }).catch(err => {
+        console.error('Microphone access denied or error:', err);
+        alert('Unable to access the microphone. Please check permissions.');
       });
+    }
+
+    // Stop microphone and visualization
+    function stopMic() {
+      if (micStream) {
+        micStream.getTracks().forEach(track => track.stop());
+        micStream = null;
+      }
+      if (audioCtx) {
+        audioCtx.close();
+        audioCtx = null;
+      }
+      analyser = null;
+      isMicActive = false;
+      micButton.textContent = 'Start Mic';
+      // Cancel animation frame and clear canvas
+      if (animationId) cancelAnimationFrame(animationId);
+      canvasCtx.clearRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
+      freqDisplay.textContent = '0 Hz';
+    }
+
+    // Event: Toggle microphone (Auto mode)
+    micButton.addEventListener('click', () => {
+      if (!isMicActive) {
+        // Start the microphone and visualization
+        startMic();
+        micButton.textContent = 'Stop Mic';
+      } else {
+        // Stop the microphone
+        stopMic();
+      }
     });
 
-    legendToggle.addEventListener("click", () => {
-      legendContent.style.display = legendContent.style.display === "none" ? "block" : "none";
-      legendToggle.textContent = legendContent.style.display === "none" ? "📜 Show Frequencies" : "📜 Hide Frequencies";
+    // Event: Toggle frequency mapping box (show/hide with smooth transition)
+    freqToggleBtn.addEventListener('click', () => {
+      if (freqBox.classList.contains('collapsed')) {
+        // Show the box
+        freqBox.classList.remove('collapsed');
+        freqToggleBtn.textContent = 'Hide Freq Box';
+      } else {
+        // Hide the box
+        freqBox.classList.add('collapsed');
+        freqToggleBtn.textContent = 'Show Freq Box';
+      }
     });
 
-    fullscreenButton.addEventListener("click", () => document.fullscreenElement ? document.exitFullscreen() : document.body.requestFullscreen());
+    // Event: Change background GIF with fade transition
+    bgButton.addEventListener('click', () => {
+      currentBgIndex = (currentBgIndex + 1) % backgrounds.length;
+      changeBackground(backgrounds[currentBgIndex]);
+    });
   </script>
 </body>
 </html>

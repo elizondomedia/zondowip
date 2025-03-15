@@ -1,15 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Zondo Visualizer</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    /* Ensure the background fills the viewport and scales correctly */
+    /* Ensure full-screen scaling */
     html, body {
       margin: 0;
       padding: 0;
-      background: #000;  /* fallback background color */
+      background: #000;
       overflow: hidden;
       height: 100%;
       width: 100%;
@@ -20,29 +20,15 @@
       height: 100vh;
       overflow: hidden;
     }
-    /* Background image scaled to cover the viewport while maintaining aspect ratio */
-    #backgroundImage {
+    #visualizer {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      object-fit: cover; /* fill viewport without distortion (may crop if aspect differs) */
+      object-fit: cover;
       z-index: 0;
     }
-    /* Color overlay for applying selected color tint */
-    #colorOverlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: transparent;
-      opacity: 0.3;           /* adjust transparency of color overlay */
-      pointer-events: none;   /* allow clicks through to underlying elements */
-      z-index: 1;
-    }
-    /* Control panel styling */
     #controls {
       position: absolute;
       bottom: 20px;
@@ -50,25 +36,22 @@
       z-index: 2;
       display: flex;
       align-items: center;
-      background: rgba(0, 0, 0, 0.5); /* semi-transparent background for readability */
+      background: rgba(0, 0, 0, 0.5);
       padding: 10px;
       border-radius: 5px;
       color: #fff;
       font-family: sans-serif;
     }
     #controls label {
-      margin: 0 5px 0 0;
+      margin-right: 5px;
     }
-    #controls input,
-    #controls select {
-      margin: 0 10px 0 5px;
+    #controls input, #controls select {
+      margin-right: 10px;
     }
-    /* Microphone status indicator styling */
     #mic-status {
       margin-left: 10px;
       font-weight: bold;
     }
-    /* Fullscreen button margin */
     #fullscreen-btn {
       margin-left: 10px;
     }
@@ -76,210 +59,135 @@
 </head>
 <body>
   <div id="visualizer-container">
-    <!-- Default static background image -->
-    <img id="backgroundImage" src="default_background.png" alt="Background" />
-    <!-- Color overlay (for tinting the background based on user-selected color) -->
-    <div id="colorOverlay"></div>
-    <!-- Controls for frequency input, color selection, mic status, and fullscreen -->
+    <img id="visualizer" src="WHITE_000.GIF" alt="Visualizer Animation">
     <div id="controls">
       <label for="frequencyInput">Frequency:</label>
-      <input type="number" id="frequencyInput" name="frequency" min="1" max="10" step="1" />
+      <input type="number" id="frequencyInput" min="144" max="963" step="1">
       <button id="setFrequencyBtn">Set Frequency</button>
       <label for="colorSelect">Color:</label>
       <select id="colorSelect">
-        <option value="default" selected>Default</option>
-        <option value="red">Red</option>
-        <option value="green">Green</option>
-        <option value="blue">Blue</option>
-        <!-- Add more color options if needed -->
+        <option value="LIGHTBLUE_144.GIF">Light Blue</option>
+        <option value="LIGHTGREEN_244.GIF">Light Green</option>
+        <option value="PINK_350.GIF">Pink</option>
+        <option value="TEAL_384.GIF">Teal</option>
+        <option value="BURGUNDY_396.GIF">Burgundy</option>
+        <option value="DARKGREEN_400.GIF">Dark Green</option>
+        <option value="DARKPURPLE_432.GIF">Dark Purple</option>
+        <option value="DARKBLUE_480.GIF">Dark Blue</option>
+        <option value="YELLOW_528.GIF">Yellow</option>
+        <option value="TURQUOISE_540.GIF">Turquoise</option>
+        <option value="ORANGE_700.GIF">Orange</option>
+        <option value="LIGHTPURPLE_768.GIF">Light Purple</option>
+        <option value="SILVER_852.GIF">Silver</option>
+        <option value="GOLD_962.GIF">Gold</option>
+        <option value="WHITE_000.GIF" selected>Default</option>
       </select>
-      <!-- Microphone status indicator text -->
+      <button id="micButton">Grant Mic Access</button>
       <span id="mic-status">Mic: off</span>
-      <!-- Fullscreen toggle button -->
       <button id="fullscreen-btn">Fullscreen</button>
     </div>
   </div>
 
   <script>
-    // Mapping of frequency input values to corresponding GIF file names in the repository
-    const frequencyToGif = {
-    144: "LIGHTBLUE_144.GIF",
-    244: "LIGHTGREEN_244.GIF",
-    350: "PINK_350.GIF",
-    384: "TEAL_384.GIF",
-    396: "BURGUNDY_396.GIF",
-    400: "DARKGREEN_400.GIF",
-    432: "DARKPURPLE_432.GIF",
-    480: "DARKBLUE_480.GIF",
-    528: "YELLOW_528.GIF",
-    540: "TURQUOISE_540.GIF",
-    700: "ORANGE_700.GIF",
-    768: "LIGHTPURPLE_768.GIF",
-    852: "SILVER_852.GIF",
-    963: "GOLD_962.GIF",
-    'default': "WHITE_000.GIF"
-};
+    const visualizer = document.getElementById("visualizer");
+    const frequencyInput = document.getElementById("frequencyInput");
+    const setFrequencyBtn = document.getElementById("setFrequencyBtn");
+    const colorSelect = document.getElementById("colorSelect");
+    const micButton = document.getElementById("micButton");
+    const micStatus = document.getElementById("mic-status");
+    const fullscreenBtn = document.getElementById("fullscreen-btn");
 
-    // DOM elements
-    const backgroundImageElem = document.getElementById("backgroundImage");
-    const colorOverlayElem = document.getElementById("colorOverlay");
-    const micStatusElem     = document.getElementById("mic-status");
-    const freqInputElem     = document.getElementById("frequencyInput");
-    const setFreqButton     = document.getElementById("setFrequencyBtn");
-    const colorSelectElem   = document.getElementById("colorSelect");
-    const fullscreenBtn     = document.getElementById("fullscreen-btn");
+    let audioContext, analyser, micStream, animationFrameId;
 
-    // Audio context and analyzer for microphone input
-    let audioContext, analyser, microphoneStream;
-    let frequencyData;      // will hold frequency spectrum data
-    let animationFrameId;   // to manage animation frame for visualization loop
+    // Frequency-to-GIF mapping
+    function getFrequencyGif(frequency) {
+      const gifs = {
+        144: "LIGHTBLUE_144.GIF",
+        244: "LIGHTGREEN_244.GIF",
+        350: "PINK_350.GIF",
+        384: "TEAL_384.GIF",
+        396: "BURGUNDY_396.GIF",
+        400: "DARKGREEN_400.GIF",
+        432: "DARKPURPLE_432.GIF",
+        480: "DARKBLUE_480.GIF",
+        528: "YELLOW_528.GIF",
+        540: "TURQUOISE_540.GIF",
+        700: "ORANGE_700.GIF",
+        768: "LIGHTPURPLE_768.GIF",
+        852: "SILVER_852.GIF",
+        963: "GOLD_962.GIF",
+        default: "WHITE_000.GIF"
+      };
+      return gifs[frequency] || gifs["default"];
+    }
 
-    // Function to explicitly request microphone access
-    function requestMicAccess() {
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    // Manually set frequency
+    setFrequencyBtn.addEventListener("click", () => {
+      const frequency = parseInt(frequencyInput.value);
+      if (!isNaN(frequency)) {
+        visualizer.src = getFrequencyGif(frequency);
+      }
+    });
+
+    // Request microphone access
+    micButton.addEventListener("click", () => {
+      if (navigator.mediaDevices.getUserMedia) {
         navigator.mediaDevices.getUserMedia({ audio: true })
-          .then(stream => {
-            // Microphone access granted
-            micStatusElem.textContent = "Mic: on";
-            micStatusElem.style.color = "lime";  // visual indicator for granted access (green text)
+          .then((stream) => {
+            micStatus.textContent = "Mic: ON";
+            micStatus.style.color = "lime";
+            micButton.disabled = true;
 
-            // Set up audio context and analyzer nodes
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
             analyser = audioContext.createAnalyser();
-            analyser.fftSize = 256;  // FFT size for frequency analysis (resolution)
-            const source = audioContext.createMediaStreamSource(stream);
-            source.connect(analyser);
-            microphoneStream = stream;
-
-            frequencyData = new Uint8Array(analyser.frequencyBinCount);
-            // Start real-time visualization based on microphone input
-            updateVisualization();
+            analyser.fftSize = 256;
+            micStream = audioContext.createMediaStreamSource(stream);
+            micStream.connect(analyser);
+            
+            processMicAudio();
           })
-          .catch(err => {
-            // Microphone access denied or error occurred
-            console.error("Microphone access error:", err);
-            micStatusElem.textContent = "Mic: denied";
-            micStatusElem.style.color = "red";   // indicate error (red text)
-            alert("Microphone access was denied or unavailable. Please ensure the site is secure (HTTPS) and mic permission is allowed.");
+          .catch((error) => {
+            console.error("Mic Access Denied:", error);
+            micStatus.textContent = "Mic: Denied";
+            micStatus.style.color = "red";
           });
       } else {
         alert("Microphone access is not supported in this browser.");
       }
-    }
-
-    // Continuous visualization update loop using microphone frequency data
-    function updateVisualization() {
-      if (!analyser) return;
-      analyser.getByteFrequencyData(frequencyData);
-
-      // Determine the frequency bin with the highest amplitude
-      let maxIndex = 0;
-      let maxValue = 0;
-      for (let i = 0; i < frequencyData.length; i++) {
-        if (frequencyData[i] > maxValue) {
-          maxValue = frequencyData[i];
-          maxIndex = i;
-        }
-      }
-
-      // Map the dominant frequency bin to one of the GIFs
-      const numGifs = Object.keys(frequencyToGif).length;
-      const bucketSize = Math.floor(frequencyData.length / numGifs);  // divide spectrum into buckets
-      let bucketIndex = Math.floor(maxIndex / bucketSize) + 1;
-      if (bucketIndex < 1) bucketIndex = 1;
-      if (bucketIndex > numGifs) bucketIndex = numGifs;
-
-      const gifFile = frequencyToGif[bucketIndex];
-      if (gifFile) {
-        // Update background to the corresponding GIF if not already showing
-        if (backgroundImageElem.getAttribute("data-current-gif") !== String(bucketIndex)) {
-          backgroundImageElem.src = gifFile;
-          backgroundImageElem.setAttribute("data-current-gif", String(bucketIndex));
-        }
-      }
-
-      // Continue the loop for real-time updates
-      animationFrameId = requestAnimationFrame(updateVisualization);
-    }
-
-    // Handle manual frequency input to change visuals
-    setFreqButton.addEventListener("click", () => {
-      const freqValue = parseInt(freqInputElem.value);
-      if (!isNaN(freqValue) && frequencyToGif[freqValue]) {
-        // If microphone visualization is running, stop it before manual override
-        if (animationFrameId) cancelAnimationFrame(animationFrameId);
-        if (microphoneStream) {
-          microphoneStream.getTracks().forEach(track => track.stop());
-          microphoneStream = null;
-        }
-        // Set the background to the selected frequency's GIF
-        backgroundImageElem.src = frequencyToGif[freqValue];
-        backgroundImageElem.setAttribute("data-current-gif", String(freqValue));
-      } else {
-        alert("Please enter a valid frequency number that has a corresponding visual.");
-      }
     });
 
-    // Handle color selection changes
- let selectedColor = "default"; // Stores selected color for all frequencies
+    // Process audio input
+    function processMicAudio() {
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      
+      function analyzeFrequency() {
+        analyser.getByteFrequencyData(dataArray);
+        let avgFrequency = dataArray.reduce((sum, val) => sum + val, 0) / dataArray.length;
 
-document.getElementById("colorSelect").addEventListener("change", function() {
-    selectedColor = this.value; 
-    updateVisualizer(); // Update visualizer with new selection
-});
+        let closestFrequency = Object.keys(getFrequencyGif)
+          .map(Number)
+          .reduce((prev, curr) => Math.abs(curr - avgFrequency) < Math.abs(prev - avgFrequency) ? curr : prev);
 
-function getFrequencyGif(frequency) {
-    const gifs = {
-        "Light Blue": "LIGHTBLUE_144.GIF",
-        "Light Green": "LIGHTGREEN_244.GIF",
-        "Pink": "PINK_350.GIF",
-        "Teal": "TEAL_384.GIF",
-        "Burgundy": "BURGUNDY_396.GIF",
-        "Dark Green": "DARKGREEN_400.GIF",
-        "Dark Purple": "DARKPURPLE_432.GIF",
-        "Dark Blue": "DARKBLUE_480.GIF",
-        "Yellow": "YELLOW_528.GIF",
-        "Turquoise": "TURQUOISE_540.GIF",
-        "Orange": "ORANGE_700.GIF",
-        "Light Purple": "LIGHTPURPLE_768.GIF",
-        "Silver": "SILVER_852.GIF",
-        "Gold": "GOLD_962.GIF",
-        "default": "WHITE_000.GIF"
-    };
-    return gifs[selectedColor] || gifs["default"];
-}
+        visualizer.src = getFrequencyGif(closestFrequency);
+        animationFrameId = requestAnimationFrame(analyzeFrequency);
+      }
+      analyzeFrequency();
+    }
 
-function updateVisualizer() {
-    const frequency = document.getElementById("frequencyInput").value;
-    const imgSrc = getFrequencyGif(frequency);
-    document.getElementById("visualizer").innerHTML = `<img src="${imgSrc}" alt="Visualizer Animation">`;
-}
-
-
-    // Fullscreen toggle functionality
+    // Fullscreen functionality
     fullscreenBtn.addEventListener("click", () => {
-      const container = document.getElementById("visualizer-container");
       if (!document.fullscreenElement) {
-        // Enter fullscreen for the visualizer container
-        if (container.requestFullscreen) {
-          container.requestFullscreen();
-        } else if (container.webkitRequestFullscreen) { /* Safari */
-          container.webkitRequestFullscreen();
-        } else if (container.msRequestFullscreen) { /* IE11 */
-          container.msRequestFullscreen();
-        }
+        document.documentElement.requestFullscreen();
       } else {
-        // Exit fullscreen mode
-        if (document.exitFullscreen) {
-          document.exitFullscreen();
-        }
+        document.exitFullscreen();
       }
     });
 
-    // On page load: set default background (already set in HTML) and request microphone access
-    window.addEventListener("load", () => {
-      requestMicAccess();
+    // Update GIF when color selection changes
+    colorSelect.addEventListener("change", () => {
+      visualizer.src = colorSelect.value;
     });
+
   </script>
 </body>
 </html>

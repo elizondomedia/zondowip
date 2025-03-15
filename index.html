@@ -5,11 +5,10 @@
   <title>Zondo Visualizer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    /* Ensure the background fills the viewport and scales correctly */
     html, body {
       margin: 0;
       padding: 0;
-      background: #000;  /* fallback background color */
+      background: #000;
       overflow: hidden;
       height: 100%;
       width: 100%;
@@ -20,17 +19,15 @@
       height: 100vh;
       overflow: hidden;
     }
-    /* Background image scaled to cover the viewport */
     #backgroundImage {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      object-fit: cover; /* Fill viewport without distortion */
+      object-fit: cover;
       z-index: 0;
     }
-    /* Control panel styling */
     #controls {
       position: absolute;
       bottom: 20px;
@@ -38,7 +35,7 @@
       z-index: 2;
       display: flex;
       align-items: center;
-      background: rgba(0, 0, 0, 0.5); /* Semi-transparent */
+      background: rgba(0, 0, 0, 0.5);
       padding: 10px;
       border-radius: 5px;
       color: #fff;
@@ -52,7 +49,6 @@
     #controls button {
       margin: 0 10px 0 5px;
     }
-    /* Microphone status indicator styling */
     #mic-status {
       font-weight: bold;
       margin-left: 10px;
@@ -61,16 +57,14 @@
 </head>
 <body>
   <div id="visualizer-container">
-    <!-- Default static background image -->
     <img id="backgroundImage" src="default_background.png" alt="Background">
-    <!-- Controls for frequency input, color selection, mic status, and fullscreen -->
     <div id="controls">
       <label for="frequencyInput">Frequency:</label>
       <input type="number" id="frequencyInput" min="144" max="963" step="1">
       <button id="setFrequencyBtn">Set Frequency</button>
       <label for="colorSelect">Color:</label>
       <select id="colorSelect">
-        <option value="default" selected>Default</option>
+        <option value="WHITE_000.GIF">Default</option>
         <option value="LIGHTBLUE_144.GIF">Light Blue</option>
         <option value="LIGHTGREEN_244.GIF">Light Green</option>
         <option value="PINK_350.GIF">Pink</option>
@@ -93,7 +87,6 @@
   </div>
 
   <script>
-    // Frequency to GIF mapping
     const frequencyToGif = {
       144: "LIGHTBLUE_144.GIF",
       244: "LIGHTGREEN_244.GIF",
@@ -112,7 +105,6 @@
       "default": "WHITE_000.GIF"
     };
 
-    // DOM Elements
     const backgroundImage = document.getElementById("backgroundImage");
     const freqInput = document.getElementById("frequencyInput");
     const setFreqBtn = document.getElementById("setFrequencyBtn");
@@ -123,18 +115,20 @@
 
     let audioContext, analyser, microphoneStream;
 
-    // Function to update background based on frequency input
     function updateVisualizer() {
       const freq = parseInt(freqInput.value);
-      const selectedGif = colorSelect.value || frequencyToGif["default"];
-      if (frequencyToGif[freq]) {
-        backgroundImage.src = selectedGif;
+      if (!isNaN(freq) && frequencyToGif[freq]) {
+        backgroundImage.src = frequencyToGif[freq];
       } else {
         alert("Invalid frequency! Please enter a value between 144 and 963.");
       }
     }
 
-    // Function to request microphone access
+    function updateColor() {
+      const selectedGif = colorSelect.value;
+      backgroundImage.src = selectedGif;
+    }
+
     function requestMicAccess() {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         navigator.mediaDevices.getUserMedia({ audio: true })
@@ -142,7 +136,6 @@
             micStatus.textContent = "Mic: ON";
             micStatus.style.color = "lime";
 
-            // Audio processing setup
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
             analyser = audioContext.createAnalyser();
             analyser.fftSize = 256;
@@ -163,7 +156,6 @@
       }
     }
 
-    // Function to process mic audio and change visuals
     function processMicAudio() {
       if (!analyser) return;
       const frequencyData = new Uint8Array(analyser.frequencyBinCount);
@@ -180,7 +172,6 @@
       analyzeFrequency();
     }
 
-    // Fullscreen Toggle
     fullscreenBtn.addEventListener("click", () => {
       if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen();
@@ -189,10 +180,9 @@
       }
     });
 
-    // Event Listeners
     setFreqBtn.addEventListener("click", updateVisualizer);
+    colorSelect.addEventListener("change", updateColor);
     micBtn.addEventListener("click", requestMicAccess);
-    colorSelect.addEventListener("change", updateVisualizer);
   </script>
 </body>
 </html>

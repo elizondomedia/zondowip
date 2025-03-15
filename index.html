@@ -27,17 +27,17 @@
       z-index: -2;
     }
 
-    /* GIF Display */
+    /* GIF Display - Scales Correctly */
     #gifDisplay {
       position: fixed;
       top: 50%;
       left: 50%;
-      width: 80vw;
-      height: 80vh;
+      width: 100vw;
+      height: 100vh;
       object-fit: contain;
       transform: translate(-50%, -50%);
       z-index: -1;
-      transition: opacity 0.5s ease;
+      transition: opacity 0.5s ease-in-out;
     }
 
     /* Controls Panel */
@@ -98,8 +98,8 @@
     /* Mobile Adjustments */
     @media screen and (max-width: 600px) {
       #gifDisplay {
-        width: 90vw;
-        height: 90vh;
+        width: 100vw;
+        height: 100vh;
       }
 
       #controls {
@@ -191,13 +191,13 @@
 
     function analyzeAudio() {
       if (!autoMode || !analyser) return;
-      const dataArray = new Uint8Array(analyser.fftSize);
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
       analyser.getByteFrequencyData(dataArray);
       const volume = Math.max(...dataArray);
-      const targetGif = gifThresholds.find(t => volume >= t.threshold)?.file || "WHITE_000.GIF";
+      const matchedGif = gifThresholds.find(t => volume >= t.threshold)?.file || "WHITE_000.GIF";
 
-      if (targetGif !== currentGif) changeGif(targetGif);
-      activeFrequencyText.textContent = `Hz: ${volume}`;
+      if (matchedGif !== currentGif) changeGif(matchedGif);
+      activeFrequencyText.textContent = `Hz: ${Math.floor(volume)}`;
 
       requestAnimationFrame(analyzeAudio);
     }
@@ -206,6 +206,7 @@
       navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
         audioContext = new AudioContext();
         analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
         audioContext.createMediaStreamSource(stream).connect(analyser);
         analyzeAudio();
       });

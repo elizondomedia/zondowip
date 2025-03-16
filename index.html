@@ -29,7 +29,7 @@
       z-index: -3;
     }
 
-    /* Auto Mode GIF Overlay (Mic Responsive) */
+    /* Auto Mode GIF Overlay (Mic Responsive - Breathing) */
     #autoGifOverlay {
       position: fixed;
       top: 50%;
@@ -45,7 +45,7 @@
       transition: opacity 0.5s ease-in-out;
     }
 
-    /* Foreground GIF (Changes Based on Frequency) */
+    /* Foreground GIF (Changes Based on Frequency - Pulsing) */
     #gifDisplay {
       position: fixed;
       top: 50%;
@@ -54,10 +54,10 @@
       height: auto;
       max-height: 80vh;
       object-fit: contain;
-      transform: translate(-50%, -50%);
+      transform: translate(-50%, -50%) scale(1);
       z-index: -1;
       opacity: 0;
-      transition: opacity 0.5s ease-in-out;
+      transition: opacity 0.5s ease-in-out, transform 0.3s ease-in-out;
     }
 
     /* Controls */
@@ -212,13 +212,7 @@
           freqDisplay.textContent = `${volume} Hz`;
 
           autoGif.style.opacity = (volume / 999).toFixed(2);
-
-          let closestFreq = Object.keys(frequencyMapping).reduce((prev, curr) => 
-            Math.abs(curr - volume) < Math.abs(prev - volume) ? curr : prev
-          );
-
-          gifDisplay.src = `https://raw.githubusercontent.com/elizondomedia/zondowip/main/${frequencyMapping[closestFreq]}`;
-          gifDisplay.style.opacity = 1;
+          gifDisplay.style.transform = `translate(-50%, -50%) scale(${volume > 0 ? 0.85 : 1})`;
 
           requestAnimationFrame(analyzeAudio);
         }

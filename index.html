@@ -14,47 +14,47 @@
       overflow: hidden; /* Prevent scrolling */
     }
 
-    /* Background container fills the screen */
+    /* Background container */
     #bgContainer {
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      z-index: -2;  /* behind everything */
+      z-index: -2;
       overflow: hidden;
     }
 
-    /* Background images (GIFs) style for proper scaling */
+    /* Background GIF styles */
     .bgImage {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      object-fit: cover; 
-      transition: opacity 1s ease;
+      object-fit: cover;
+      transition: opacity 1s ease-in-out; /* Smooth transition */
       opacity: 1;
-      pointer-events: none; /* Allow clicks to pass through background */
+      pointer-events: none;
     }
 
-    /* Ensure the default background always loads first */
+    /* Default background is always present */
     #defaultBg {
       opacity: 1;
-      z-index: -3; /* Keep it always behind other elements */
+      z-index: -3;
     }
 
-    /* Canvas for visualizer (fills screen) */
+    /* Canvas for visualizer */
     #visualizer {
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      z-index: -1; /* just above background, behind UI */
+      z-index: -1;
     }
 
-    /* Top bar for controls and active frequency display */
+    /* UI Controls */
     #topBar {
       position: fixed;
       top: 10px;
@@ -64,12 +64,12 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      z-index: 2; /* above canvas */
+      z-index: 2;
       color: #fff;
       font-family: Arial, sans-serif;
     }
 
-    /* Active frequency display text */
+    /* Frequency Display */
     #freqDisplay {
       font-size: 1.5rem;
       text-shadow: 0 0 5px #000;
@@ -77,11 +77,11 @@
     }
 
     @keyframes flashAnim {
-      0%   { opacity: 1; }
+      0% { opacity: 1; }
       100% { opacity: 0.6; }
     }
 
-    /* Frequency mapping box (legend) */
+    /* Frequency Legend */
     #freqBox {
       position: fixed;
       bottom: 10px;
@@ -93,7 +93,7 @@
       max-height: 900px;
       overflow: hidden;
       opacity: 1;
-      transition: max-height 0.5s ease, opacity 0.5s ease, padding 0.5s ease;
+      transition: max-height 0.5s ease, opacity 0.5s ease;
       z-index: 2;
       font-family: Arial, sans-serif;
       font-size: 0.95rem;
@@ -102,10 +102,10 @@
     #freqBox.collapsed {
       max-height: 0;
       opacity: 0;
-      padding: 0 10px;
+      padding: 0;
     }
 
-    /* Responsive adjustments */
+    /* Responsive Adjustments */
     @media (max-width: 600px) {
       #topBar {
         flex-wrap: wrap;
@@ -127,13 +127,13 @@
 
   <!-- Background container with default GIF -->
   <div id="bgContainer">
-    <img src="default_background" class="bgImage" id="defaultBg" alt="Default Background Animation">
+    <img src="default_background.GIF" class="bgImage" id="defaultBg" alt="Default Background">
   </div>
 
-  <!-- Canvas for the audio visualizer -->
+  <!-- Canvas for the visualizer -->
   <canvas id="visualizer"></canvas>
 
-  <!-- Top bar UI: controls and display -->
+  <!-- UI Controls -->
   <div id="topBar">
     <button id="micButton">Start Mic</button>
     <div id="freqDisplay">0 Hz</div>
@@ -141,7 +141,7 @@
     <button id="freqToggle">Show Freq Box</button>
   </div>
 
-  <!-- Frequency mapping legend (collapsible) -->
+  <!-- Frequency Mapping Legend -->
   <div id="freqBox">
     <h3>Frequency Ranges</h3>
     <ul>
@@ -164,15 +164,36 @@
   </div>
 
   <script>
-    const defaultBg = document.getElementById('defaultBg');
     const freqDisplay = document.getElementById('freqDisplay');
     const micButton = document.getElementById('micButton');
     const bgButton = document.getElementById('bgButton');
     const freqToggleBtn = document.getElementById('freqToggle');
     const freqBox = document.getElementById('freqBox');
+    const bgContainer = document.getElementById('bgContainer');
 
     let audioCtx, analyser, micStream;
     let isMicActive = false;
+    let bgTransitionInProgress = false;
+    let currentBgIndex = 0;
+
+    // Background mapping to frequencies
+    const backgrounds = {
+      144: "LIGHTBLUE_144.GIF",
+      244: "LIGHTGREEN_244.GIF",
+      350: "PINK_350.GIF",
+      384: "TEAL_384.GIF",
+      396: "BURGUNDY_396.GIF",
+      400: "DARKGREEN_400.GIF",
+      432: "DARKPURPLE_432.GIF",
+      480: "DARKBLUE_480.GIF",
+      528: "YELLOW_528.GIF",
+      540: "TURQUOISE_540.GIF",
+      700: "ORANGE_700.GIF",
+      768: "LIGHTPURPLE_768.GIF",
+      852: "SILVER_852.GIF",
+      963: "GOLD_962.GIF",
+      default: "WHITE_000.GIF"
+    };
 
     function startMic() {
       navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
@@ -189,36 +210,36 @@
       });
     }
 
-    function stopMic() {
-      if (micStream) {
-        micStream.getTracks().forEach(track => track.stop());
-      }
-      if (audioCtx) {
-        audioCtx.close();
-        audioCtx = null;
-      }
-      isMicActive = false;
-      freqDisplay.textContent = '0 Hz';
-    }
-
     function renderFrame() {
       requestAnimationFrame(renderFrame);
       if (!analyser) return;
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
       analyser.getByteFrequencyData(dataArray);
-      const maxVal = Math.max(...dataArray);
-      freqDisplay.textContent = `${maxVal} Hz`;
+      const freq = Math.max(...dataArray);
+      freqDisplay.textContent = `${freq} Hz`;
+
+      let matchedBg = backgrounds.default;
+      for (const [threshold, bg] of Object.entries(backgrounds)) {
+        if (freq >= threshold) matchedBg = bg;
+      }
+      changeBackground(matchedBg);
     }
 
-    micButton.addEventListener('click', () => {
-      isMicActive ? stopMic() : startMic();
-    });
+    function changeBackground(bgSrc) {
+      if (bgTransitionInProgress) return;
+      bgTransitionInProgress = true;
+      const newBg = document.createElement('img');
+      newBg.src = bgSrc;
+      newBg.className = 'bgImage';
+      newBg.style.opacity = '0';
+      bgContainer.appendChild(newBg);
 
-    freqToggleBtn.addEventListener('click', () => {
-      freqBox.classList.toggle('collapsed');
-      freqToggleBtn.textContent = freqBox.classList.contains('collapsed') ? 'Show Freq Box' : 'Hide Freq Box';
-    });
-
+      setTimeout(() => newBg.style.opacity = '1', 100);
+      setTimeout(() => {
+        document.querySelector('.bgImage').remove();
+        bgTransitionInProgress = false;
+      }, 1000);
+    }
   </script>
 </body>
 </html>

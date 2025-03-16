@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Zondo Frequency Visualizer</title>
+  <title>Zondo:) Frequency Visualizer</title>
   <style>
     /* General Styling */
-    body {
+    html, body {
       margin: 0;
       padding: 0;
       background: black;
@@ -16,50 +16,31 @@
       text-align: center;
     }
 
-    /* Static Background GIF */
-    #bgContainer {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      width: 80vw;
-      height: 80vh;
-      transform: translate(-50%, -50%);
-      z-index: -3;
-    }
-
-    #staticBg {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-    }
-
-    /* Active GIF Display (Mic-Responsive) */
+    /* Background GIF */
     #gifDisplay {
       position: fixed;
       top: 50%;
       left: 50%;
-      width: 80vw;
-      height: 80vh;
+      width: 80vw;  /* Adjusted to 80% */
+      height: auto;
+      max-height: 80vh; /* Ensuring it doesn’t exceed */
       object-fit: contain;
       transform: translate(-50%, -50%);
       z-index: -1;
-      opacity: 1;
-      transition: opacity 0.7s ease-in-out;
+      transition: opacity 0.5s ease-in-out;
     }
 
-    /* UI Controls */
-    #topBar {
-      position: fixed;
+    /* Controls Panel */
+    #controls {
+      position: absolute;
       top: 10px;
-      left: 0;
-      width: 100%;
+      left: 50%;
+      transform: translateX(-50%);
       display: flex;
-      justify-content: center;
       gap: 10px;
-      z-index: 2;
     }
 
-    /* Button Styling */
+    /* Buttons & Select Styling */
     button, select {
       padding: 10px;
       font-size: 1rem;
@@ -68,29 +49,33 @@
       cursor: pointer;
       background: #33E4F4;
       color: black;
-      transition: background 0.3s ease-in-out, color 0.3s ease-in-out;
     }
 
-    button:hover, select:hover {
+    button:hover {
       background: #F41FEA;
-      color: black;
+      color: white;
+    }
+
+    /* Frequency Display */
+    #freqDisplay {
+      font-size: 1.5rem;
+      font-weight: bold;
+      width: 80px;  /* Fixed width to avoid shifting */
+      text-align: center;
     }
 
     /* Frequency Guide */
     #freqBox {
-      position: fixed;
+      position: absolute;
       bottom: 10px;
       right: 10px;
       background: rgba(0, 0, 0, 0.7);
-      color: #fff;
       padding: 10px;
       border-radius: 5px;
+      font-size: 0.9rem;
       max-height: 900px;
       overflow: hidden;
-      opacity: 1;
       transition: max-height 0.5s ease, opacity 0.5s ease;
-      z-index: 2;
-      font-size: 0.95rem;
     }
 
     #freqBox.collapsed {
@@ -98,54 +83,38 @@
       opacity: 0;
       padding: 0;
     }
-
-    /* Live Hz Frequency Display (Fixed Width) */
-    #freqDisplay {
-      font-size: 1.5rem;
-      font-weight: bold;
-      color: #33E4F4;
-      text-shadow: 0px 0px 10px #33E4F4;
-      width: 80px;  /* ✅ Fix width to prevent shifting */
-      display: inline-block;
-      text-align: center;
-    }
   </style>
 </head>
 <body>
 
-  <!-- Static Background GIF -->
-  <div id="bgContainer">
-    <img id="staticBg" src="https://elizondomedia.github.io/zondowip/default_background.GIF" alt="Background GIF">
-  </div>
+  <!-- GIF Display -->
+  <img id="gifDisplay" src="https://raw.githubusercontent.com/elizondomedia/zondowip/main/ZONDO_GIF.GIF" alt="Audio Visualizer GIF">
 
-  <!-- Active GIF Display (Mic-Responsive) -->
-  <img id="gifDisplay" src="https://elizondomedia.github.io/zondowip/WHITE_000.GIF" alt="Visualizer GIF">
-
-  <!-- UI Controls -->
-  <div id="topBar">
+  <!-- Controls -->
+  <div id="controls">
     <button id="micButton">🎤 Start Mic</button>
     <div id="freqDisplay">0 Hz</div>
-    <select id="bgSelector" title="Select Background GIF">
+    <select id="bgSelector">
       <option value="AUTO">🔄 Auto (Mic Controlled)</option>
-      <option value="LIGHTBLUE_144.GIF">Light Blue</option>
-      <option value="LIGHTGREEN_244.GIF">Light Green</option>
-      <option value="PINK_350.GIF">Pink</option>
-      <option value="TEAL_384.GIF">Teal</option>
-      <option value="BURGUNDY_396.GIF">Burgundy</option>
-      <option value="DARKGREEN_400.GIF">Dark Green</option>
-      <option value="DARKPURPLE_432.GIF">Dark Purple</option>
-      <option value="DARKBLUE_480.GIF">Dark Blue</option>
-      <option value="YELLOW_528.GIF">Yellow</option>
-      <option value="TURQUOISE_540.GIF">Turquoise</option>
-      <option value="ORANGE_700.GIF">Orange</option>
-      <option value="LIGHTPURPLE_768.GIF">Light Purple</option>
-      <option value="SILVER_852.GIF">Silver</option>
-      <option value="GOLD_963.GIF">Gold</option>
+      <option value="https://raw.githubusercontent.com/elizondomedia/zondowip/main/LIGHTBLUE_144.GIF">Light Blue</option>
+      <option value="https://raw.githubusercontent.com/elizondomedia/zondowip/main/LIGHTGREEN_244.GIF">Light Green</option>
+      <option value="https://raw.githubusercontent.com/elizondomedia/zondowip/main/PINK_350.GIF">Pink</option>
+      <option value="https://raw.githubusercontent.com/elizondomedia/zondowip/main/TEAL_384.GIF">Teal</option>
+      <option value="https://raw.githubusercontent.com/elizondomedia/zondowip/main/BURGUNDY_396.GIF">Burgundy</option>
+      <option value="https://raw.githubusercontent.com/elizondomedia/zondowip/main/DARKGREEN_400.GIF">Dark Green</option>
+      <option value="https://raw.githubusercontent.com/elizondomedia/zondowip/main/DARKPURPLE_432.GIF">Dark Purple</option>
+      <option value="https://raw.githubusercontent.com/elizondomedia/zondowip/main/DARKBLUE_480.GIF">Dark Blue</option>
+      <option value="https://raw.githubusercontent.com/elizondomedia/zondowip/main/YELLOW_528.GIF">Yellow</option>
+      <option value="https://raw.githubusercontent.com/elizondomedia/zondowip/main/TURQUOISE_540.GIF">Turquoise</option>
+      <option value="https://raw.githubusercontent.com/elizondomedia/zondowip/main/ORANGE_700.GIF">Orange</option>
+      <option value="https://raw.githubusercontent.com/elizondomedia/zondowip/main/LIGHTPURPLE_768.GIF">Light Purple</option>
+      <option value="https://raw.githubusercontent.com/elizondomedia/zondowip/main/SILVER_852.GIF">Silver</option>
+      <option value="https://raw.githubusercontent.com/elizondomedia/zondowip/main/GOLD_962.GIF">Gold</option>
     </select>
     <button id="freqToggle">Show Freq Guide</button>
   </div>
 
-  <!-- ✅ Frequency Guide -->
+  <!-- Frequency Guide -->
   <div id="freqBox" class="collapsed">
     <h3>Frequency Colors</h3>
     <ul>
@@ -167,58 +136,39 @@
   </div>
 
   <script>
+    const freqDisplay = document.getElementById('freqDisplay');
     const micButton = document.getElementById('micButton');
     const bgSelector = document.getElementById('bgSelector');
     const freqToggleBtn = document.getElementById('freqToggle');
     const freqBox = document.getElementById('freqBox');
-    const freqDisplay = document.getElementById('freqDisplay');
-    const gifImage = document.getElementById('gifDisplay');
+    const gifDisplay = document.getElementById('gifDisplay');
 
     let isMicActive = false;
-    let audioContext, analyser, micStream;
-
-    const gifMap = {
-      144: "LIGHTBLUE_144.GIF",
-      244: "LIGHTGREEN_244.GIF",
-      350: "PINK_350.GIF",
-      384: "TEAL_384.GIF",
-      396: "BURGUNDY_396.GIF",
-      400: "DARKGREEN_400.GIF",
-      432: "DARKPURPLE_432.GIF",
-      480: "DARKBLUE_480.GIF",
-      528: "YELLOW_528.GIF",
-      540: "TURQUOISE_540.GIF",
-      700: "ORANGE_700.GIF",
-      768: "LIGHTPURPLE_768.GIF",
-      852: "SILVER_852.GIF",
-      963: "GOLD_963.GIF"
-    };
 
     function startMic() {
       navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-        audioContext = new AudioContext();
-        analyser = audioContext.createAnalyser();
+        let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let analyser = audioCtx.createAnalyser();
         analyser.fftSize = 1024;
-        micStream = audioContext.createMediaStreamSource(stream);
-        micStream.connect(analyser);
+        let source = audioCtx.createMediaStreamSource(stream);
+        source.connect(analyser);
         isMicActive = true;
-        renderFrame();
-      }).catch(err => console.error("Mic error:", err));
+        renderFrame(analyser);
+      }).catch(err => alert("Microphone access required."));
     }
 
-    function renderFrame() {
-      requestAnimationFrame(renderFrame);
-      if (!isMicActive || bgSelector.value !== "AUTO") return;
+    function renderFrame(analyser) {
+      requestAnimationFrame(() => renderFrame(analyser));
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
       analyser.getByteFrequencyData(dataArray);
       const freq = Math.max(...dataArray);
-      freqDisplay.textContent = `${freq.toFixed(0)} Hz`;
-      gifImage.src = `https://elizondomedia.github.io/zondowip/${gifMap[freq] || "WHITE_000.GIF"}`;
+      freqDisplay.textContent = `${freq} Hz`;
+      if (bgSelector.value === "AUTO") gifDisplay.src = `https://raw.githubusercontent.com/elizondomedia/zondowip/main/ZONDO_GIF.GIF`;
     }
 
-    micButton.addEventListener('click', startMic);
+    micButton.addEventListener('click', () => isMicActive ? location.reload() : startMic());
     freqToggleBtn.addEventListener('click', () => freqBox.classList.toggle('collapsed'));
-    bgSelector.addEventListener('change', () => gifImage.src = `https://elizondomedia.github.io/zondowip/${bgSelector.value}`);
+    bgSelector.addEventListener('change', () => gifDisplay.src = bgSelector.value);
   </script>
 </body>
 </html>

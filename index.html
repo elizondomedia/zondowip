@@ -218,15 +218,7 @@
     }
 
     function toggleFreqGuide() {
-      if (freqBox.style.maxHeight === "0px" || freqBox.style.maxHeight === "") {
-        freqBox.style.maxHeight = "900px";
-        freqBox.style.opacity = "1";
-        freqBox.style.padding = "10px";
-      } else {
-        freqBox.style.maxHeight = "0px";
-        freqBox.style.opacity = "0";
-        freqBox.style.padding = "0";
-      }
+      freqBox.classList.toggle("visible");
     }
 
     bgSelector.addEventListener("change", () => {
@@ -242,6 +234,5 @@
     document.getElementById("micButton").addEventListener("click", startMic);
     document.getElementById("freqToggle").addEventListener("click", toggleFreqGuide);
 </script>
-
 </body>
 </html>

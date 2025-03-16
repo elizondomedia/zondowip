@@ -125,7 +125,7 @@
   <div id="topBar">
     <button id="micButton">🎤 Start Mic</button>
     <div id="freqDisplay">0 Hz</div>
-    <select id="bgSelector">
+    <select id="bgSelector" title="Select Background GIF">
       <option value="AUTO">🔄 Auto (Mic Controlled)</option>
       <option value="LIGHTBLUE_144.GIF">Light Blue</option>
       <option value="LIGHTGREEN_244.GIF">Light Green</option>
@@ -176,7 +176,6 @@
 
     let isMicActive = false;
     let audioContext, analyser, micStream;
-    let lastGif = null;
 
     const gifMap = {
       144: "LIGHTBLUE_144.GIF",
@@ -197,17 +196,14 @@
 
     function startMic() {
       navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        audioContext = new AudioContext();
         analyser = audioContext.createAnalyser();
         analyser.fftSize = 1024;
         micStream = audioContext.createMediaStreamSource(stream);
         micStream.connect(analyser);
         isMicActive = true;
         renderFrame();
-      }).catch(err => {
-        console.error("Microphone Access Denied:", err);
-        alert("Microphone access is required.");
-      });
+      }).catch(err => console.error("Mic error:", err));
     }
 
     function renderFrame() {
@@ -216,13 +212,11 @@
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
       analyser.getByteFrequencyData(dataArray);
       const freq = Math.max(...dataArray);
-      freqDisplay.textContent = `${freq} Hz`;
-      updateGIF(freq);
+      freqDisplay.textContent = `${freq.toFixed(0)} Hz`;
+      gifImage.src = `https://elizondomedia.github.io/zondowip/${gifMap[freq] || "WHITE_000.GIF"}`;
     }
 
     micButton.addEventListener('click', startMic);
-    bgSelector.addEventListener('change', () => isMicActive && updateGIF(0));
-    freqToggleBtn.addEventListener('click', () => freqBox.classList.toggle('collapsed'));
   </script>
 </body>
 </html>

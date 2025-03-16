@@ -26,7 +26,7 @@
       max-height: 80vh;
       object-fit: contain;
       transform: translate(-50%, -50%);
-      z-index: -4;
+      z-index: -3;
     }
 
     /* Auto Mode GIF Overlay */
@@ -60,7 +60,7 @@
       transition: opacity 0.5s ease-in-out, transform 0.3s ease-in-out;
     }
 
-    /* Color Overlay GIF (Fixed: Now properly updates visibility) */
+    /* Color Overlay GIF (Now Always Visible at 100% Opacity) */
     #colorGifOverlay {
       position: fixed;
       top: 50%;
@@ -71,9 +71,9 @@
       object-fit: contain;
       transform: translate(-50%, -50%) scale(1);
       z-index: -3;
-      opacity: 1; /* Always visible */
-      display: block; /* Ensures GIF is always displayed */
-      transition: opacity 0.5s ease-in-out, transform 0.3s ease-in-out;
+      opacity: 1; /* Now always fully visible */
+      display: block;
+      transition: transform 0.3s ease-in-out;
     }
 
     /* Controls */
@@ -172,7 +172,7 @@
 
   <!-- Frequency Guide -->
   <div id="freqBox">
-    <h3>Frequency Color Guide</h3>
+    <h3>Frequency Colors</h3>
     <ul>
       <li>144Hz - LightBlue</li>
       <li>244Hz - LightGreen</li>
@@ -188,7 +188,6 @@
       <li>768Hz - LightPurple</li>
       <li>852Hz - Silver</li>
       <li>963Hz - Gold</li>
-      <li>All Other Hz - (Low & High) - "White Noise"</li>
     </ul>
   </div>
 
@@ -196,34 +195,15 @@
     const autoGif = document.getElementById("autoGifOverlay");
     const gifDisplay = document.getElementById("gifDisplay");
     const colorGifOverlay = document.getElementById("colorGifOverlay");
-    const bgSelector = document.getElementById("bgSelector");
     const freqDisplay = document.getElementById("freqDisplay");
     const freqBox = document.getElementById("freqBox");
-
-    const frequencyMapping = {
-      144: "LIGHTBLUE_144.GIF",
-      244: "LIGHTGREEN_244.GIF",
-      350: "PINK_350.GIF",
-      384: "TEAL_384.GIF",
-      396: "BURGUNDY_396.GIF",
-      400: "DARKGREEN_400.GIF",
-      432: "DARKPURPLE_432.GIF",
-      480: "DARKBLUE_480.GIF",
-      528: "YELLOW_528.GIF",
-      540: "TURQUOISE_540.GIF",
-      700: "ORANGE_700.GIF",
-      768: "LIGHTPURPLE_768.GIF",
-      852: "SILVER_852.GIF",
-      963: "GOLD_962.GIF"
-    };
 
     function startMic() {
       navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
         autoGif.style.display = "block";
 
         function analyzeAudio() {
-          // Simulated dynamic GIF switching logic
-          colorGifOverlay.style.opacity = 1;
+          autoGif.style.opacity = 1;
           requestAnimationFrame(analyzeAudio);
         }
 
@@ -231,8 +211,12 @@
       });
     }
 
+    function toggleFreqGuide() {
+      freqBox.classList.toggle("visible");
+    }
+
     document.getElementById("micButton").addEventListener("click", startMic);
-    document.getElementById("freqToggle").addEventListener("click", () => freqBox.classList.toggle("visible"));
+    document.getElementById("freqToggle").addEventListener("click", toggleFreqGuide);
   </script>
 </body>
 </html>

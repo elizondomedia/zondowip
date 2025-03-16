@@ -29,7 +29,7 @@
       z-index: -3;
     }
 
-    /* Auto Mode GIF Overlay (Mic Responsive) - Initially Hidden */
+    /* Auto Mode GIF Overlay (Mic Responsive) */
     #autoGifOverlay {
       position: fixed;
       top: 50%;
@@ -45,7 +45,7 @@
       transition: opacity 0.5s ease-in-out;
     }
 
-    /* Foreground GIF (Changes on Hz Detection) */
+    /* Foreground GIF (Changes on Selection) */
     #gifDisplay {
       position: fixed;
       top: 50%;
@@ -56,7 +56,7 @@
       object-fit: contain;
       transform: translate(-50%, -50%);
       z-index: -1;
-      opacity: 0; /* Hidden by default */
+      opacity: 0;
       transition: opacity 0.5s ease-in-out;
     }
 
@@ -152,7 +152,7 @@
 
   <!-- Frequency Guide -->
   <div id="freqBox" class="collapsed">
-    <h3>Frequency Colors</h3>
+    <h3>Frequency Guide</h3>
     <ul>
       <li>144Hz - LightBlue</li>
       <li>244Hz - LightGreen</li>
@@ -213,7 +213,7 @@
 
           autoGif.style.opacity = (volume / 150).toFixed(2);
 
-          if (frequencyMapping[volume]) {
+          if (bgSelector.value === "AUTO" && frequencyMapping[volume]) {
             gifDisplay.src = `https://raw.githubusercontent.com/elizondomedia/zondowip/main/${frequencyMapping[volume]}`;
             gifDisplay.style.opacity = 1;
           } else {

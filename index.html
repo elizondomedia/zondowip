@@ -71,7 +71,8 @@
       object-fit: contain;
       transform: translate(-50%, -50%) scale(1);
       z-index: -3;
-      opacity: 0;
+      opacity: 1; /* Ensures full visibility */
+      display: none;
       transition: opacity 0.5s ease-in-out, transform 0.3s ease-in-out;
     }
 
@@ -118,15 +119,16 @@
       padding: 10px;
       border-radius: 5px;
       font-size: 0.9rem;
-      max-height: 900px;
+      max-height: 0;
       overflow: hidden;
+      opacity: 0;
       transition: max-height 0.5s ease, opacity 0.5s ease;
     }
 
-    #freqBox.collapsed {
-      max-height: 0;
-      opacity: 0;
-      padding: 0;
+    #freqBox.visible {
+      max-height: 900px;
+      opacity: 1;
+      padding: 10px;
     }
   </style>
 </head>
@@ -166,6 +168,28 @@
       <option value="GOLD_962.GIF">Gold</option>
     </select>
     <button id="freqToggle">Show Freq Guide</button>
+  </div>
+
+  <!-- Frequency Guide -->
+  <div id="freqBox">
+    <h3>Frequency Colors</h3>
+    <ul>
+      <li>144Hz - LightBlue</li>
+      <li>244Hz - LightGreen</li>
+      <li>350Hz - Pink</li>
+      <li>384Hz - Teal</li>
+      <li>396Hz - Burgundy</li>
+      <li>400Hz - DarkGreen</li>
+      <li>432Hz - DarkPurple</li>
+      <li>480Hz - DarkBlue</li>
+      <li>528Hz - Yellow</li>
+      <li>540Hz - Turquoise</li>
+      <li>700Hz - Orange</li>
+      <li>768Hz - LightPurple</li>
+      <li>852Hz - Silver</li>
+      <li>963Hz - Gold</li>
+      <li>All Other Hz - (Low & High) - "White Noise"</li>
+    </ul>
   </div>
 
   <script>
@@ -210,19 +234,9 @@
           const frequency = (maxIndex * audioContext.sampleRate) / analyser.fftSize;
           freqDisplay.textContent = `${Math.round(frequency)} Hz`;
 
-          autoGif.style.opacity = (frequency / 999).toFixed(2);
-
-          let detectedFreq = Object.keys(frequencyMapping).find(
-            f => Math.abs(frequency - f) <= 20
-          );
-
-          if (detectedFreq) {
-            let gifPath = `https://raw.githubusercontent.com/elizondomedia/zondowip/main/${frequencyMapping[detectedFreq]}`;
-            colorGifOverlay.src = gifPath;
-            colorGifOverlay.style.opacity = 1;
-          } else {
-            colorGifOverlay.style.opacity = 0;
-          }
+          let detectedFreq = Object.keys(frequencyMapping).find(f => Math.abs(frequency - f) <= 20);
+          colorGifOverlay.src = detectedFreq ? `https://raw.githubusercontent.com/elizondomedia/zondowip/main/${frequencyMapping[detectedFreq]}` : "";
+          colorGifOverlay.style.opacity = detectedFreq ? 1 : 0;
 
           requestAnimationFrame(analyzeAudio);
         }
@@ -232,7 +246,7 @@
     }
 
     document.getElementById("micButton").addEventListener("click", startMic);
-    document.getElementById("freqToggle").addEventListener("click", () => freqBox.classList.toggle("collapsed"));
+    document.getElementById("freqToggle").addEventListener("click", () => freqBox.classList.toggle("visible"));
   </script>
 </body>
 </html>

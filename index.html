@@ -219,17 +219,24 @@
 
     function toggleFreqGuide() {
     if (freqBox.classList.contains("visible")) {
-        freqBox.style.maxHeight = "0";
+        freqBox.style.maxHeight = "0px";
         freqBox.style.opacity = "0";
+        freqBox.style.padding = "0";
         setTimeout(() => {
+            freqBox.style.display = "none";
             freqBox.classList.remove("visible");
-        }, 500); // Delay hiding until animation finishes
+        }, 500); // Wait for transition before hiding
     } else {
-        freqBox.classList.add("visible");
-        freqBox.style.maxHeight = "900px";
-        freqBox.style.opacity = "1";
+        freqBox.style.display = "block";
+        setTimeout(() => {
+            freqBox.classList.add("visible");
+            freqBox.style.maxHeight = "900px";
+            freqBox.style.opacity = "1";
+            freqBox.style.padding = "10px";
+        }, 10); // Small delay to trigger the transition
     }
 }
+
 
     bgSelector.addEventListener("change", () => {
       autoMode = bgSelector.value === "AUTO";

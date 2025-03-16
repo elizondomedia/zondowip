@@ -149,8 +149,8 @@
   <!-- Base ZONDO GIF -->
   <img id="autoGifOverlay" src="https://raw.githubusercontent.com/elizondomedia/zondowip/main/ZONDO_GIF.GIF" alt="Base ZONDO GIF">
 
-  <!-- Color Overlay GIF -->
-  <img id="colorGifOverlay" src="" alt="Selected Color Overlay GIF">
+  <!-- Color Overlay GIF (Fix: Starts with a valid GIF) -->
+  <img id="colorGifOverlay" src="https://raw.githubusercontent.com/elizondomedia/zondowip/main/LIGHTBLUE_144.GIF" alt="Selected Color Overlay GIF">
 
   <!-- Frequency Display -->
   <div id="freqDisplay">0 Hz</div>
@@ -159,13 +159,11 @@
   <div id="freqGuide">
     <br>
     <strong>*TO START:</strong><br>
-    Press/Click<br>
-    Anywhere &<br>
+    Press/Click Anywhere &<br>
     Grant Mic Access<br>
     (Does not record)<br>
     <br>
     <strong>Frequency Color Guide:</strong><br>
-    <br>
     144Hz - LightBlue<br>
     244Hz - LightGreen<br>
     350Hz - Pink<br>
@@ -181,8 +179,7 @@
     852Hz - Silver<br>
     963Hz - Gold<br>
     <br>
-    All Other Hz<br>
-    "White Noise"<br>
+    All Other Hz: "White Noise"<br>
     <br>
     <br>
     <br>
@@ -223,7 +220,6 @@
 
   <script>
     const colorGifOverlay = document.getElementById("colorGifOverlay");
-    const freqDisplay = document.getElementById("freqDisplay");
     const colorSelector = document.getElementById("colorSelector");
     const fullscreenButton = document.getElementById("fullscreenButton");
 

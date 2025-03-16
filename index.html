@@ -188,7 +188,6 @@
       <li>768Hz - LightPurple</li>
       <li>852Hz - Silver</li>
       <li>963Hz - Gold</li>
-      <li>All Other Hz - (Low & High) - "White Noise"</li>
     </ul>
   </div>
 
@@ -201,15 +200,27 @@
 
     function startMic() {
       navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+        const audioContext = new AudioContext();
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 2048;
+        const micSource = audioContext.createMediaStreamSource(stream);
+        micSource.connect(analyser);
+
         autoGif.style.display = "block";
 
         function analyzeAudio() {
-          autoGif.style.opacity = 1;
+          const dataArray = new Uint8Array(analyser.frequencyBinCount);
+          analyser.getByteFrequencyData(dataArray);
+          const volume = Math.max(...dataArray);
+          freqDisplay.textContent = `${volume} Hz`;
+
+          autoGif.style.opacity = (volume / 999).toFixed(2);
+
           requestAnimationFrame(analyzeAudio);
         }
 
         analyzeAudio();
-      });
+      }).catch(error => console.error("Mic Access Denied", error));
     }
 
     function toggleFreqGuide() {

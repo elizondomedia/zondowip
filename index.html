@@ -29,21 +29,22 @@
       z-index: -3;
     }
 
-    /* Auto Mode GIF Overlay (Mic Responsive) */
-#autoGifOverlay {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  width: 80vw;
-  height: auto;
-  max-height: 80vh;
-  object-fit: contain;
-  transform: translate(-50%, -50%);
-  z-index: -2;
-  opacity: 0; /* 🛠️ Hides it by default */
-  transition: opacity 0.5s ease-in-out;
-  display: none; /* 🛠️ Ensures it doesn't load visually */
-}
+    /* Auto Mode GIF Overlay (Mic Responsive) - Initially Hidden */
+    #autoGifOverlay {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: 80vw;
+      height: auto;
+      max-height: 80vh;
+      object-fit: contain;
+      transform: translate(-50%, -50%);
+      z-index: -2;
+      opacity: 0; /* Starts completely hidden */
+      display: none; /* Ensures it's not rendered until mic starts */
+      transition: opacity 0.5s ease-in-out;
+    }
+
     /* Foreground GIF (Changes on Selection) */
     #gifDisplay {
       position: fixed;
@@ -177,85 +178,27 @@
     const freqBox = document.getElementById("freqBox");
 
     function startMic() {
-  navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-    const audioContext = new AudioContext();
-    const analyser = audioContext.createAnalyser();
-    analyser.fftSize = 256;
-    const micSource = audioContext.createMediaStreamSource(stream);
-    micSource.connect(analyser);
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+        const audioContext = new AudioContext();
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        const micSource = audioContext.createMediaStreamSource(stream);
+        micSource.connect(analyser);
 
-    // 🛠️ Make sure autoGifOverlay is visible only after mic starts
-    autoGif.style.display = "block";
-
-    function analyzeAudio() {
-      const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      analyser.getByteFrequencyData(dataArray);
-      const volume = Math.max(...dataArray);
-      freqDisplay.textContent = `${volume} Hz`;
-
-      // Change Hz text color dynamically
-      freqDisplay.style.color = getClosestFrequencyColor(volume);
-
-      // Smooth pulsing effect for breathing GIF
-      autoGif.style.opacity = (volume / 150).toFixed(2);
-
-      requestAnimationFrame(analyzeAudio);
-    }
-
-    analyzeAudio();
-  });
-}
+        autoGif.style.display = "block"; // Show the GIF when mic starts
 
         function analyzeAudio() {
           const dataArray = new Uint8Array(analyser.frequencyBinCount);
           analyser.getByteFrequencyData(dataArray);
           const volume = Math.max(...dataArray);
           freqDisplay.textContent = `${volume} Hz`;
-          // Frequency-to-Color Mapping
-const frequencyColors = {
-  144: "#33E4F4",  // Light Blue
-  244: "#90EE90",  // Light Green
-  350: "#FF69B4",  // Pink
-  384: "#008080",  // Teal
-  396: "#800020",  // Burgundy
-  400: "#006400",  // Dark Green
-  432: "#4B0082",  // Dark Purple
-  480: "#00008B",  // Dark Blue
-  528: "#FFD700",  // Yellow
-  540: "#40E0D0",  // Turquoise
-  700: "#FFA500",  // Orange
-  768: "#9370DB",  // Light Purple
-  852: "#C0C0C0",  // Silver
-  963: "#FFD700",  // Gold
-};
 
-function getClosestFrequencyColor(freq) {
-  let closestFreq = Object.keys(frequencyColors).reduce((prev, curr) => 
-    Math.abs(curr - freq) < Math.abs(prev - freq) ? curr : prev
-  );
-  return frequencyColors[closestFreq];
-}
+          // Smooth pulsing effect for breathing GIF
+          autoGif.style.opacity = (volume / 150).toFixed(2);
 
-// Modify analyzeAudio function
-function analyzeAudio() {
-  const dataArray = new Uint8Array(analyser.frequencyBinCount);
-  analyser.getByteFrequencyData(dataArray);
-  const volume = Math.max(...dataArray);
-  freqDisplay.textContent = `${volume} Hz`;
-
-  // Change Hz text color dynamically
-  freqDisplay.style.color = getClosestFrequencyColor(volume);
-
-  // Smooth pulsing effect for the breathing GIF
-  autoGif.style.opacity = (volume / 150).toFixed(2);
-  
-  requestAnimationFrame(analyzeAudio);
-}
-          // ✅ More dramatic breathing effect
-          autoGif.style.opacity = Math.min(1, (volume / 100).toFixed(2));
-          
           requestAnimationFrame(analyzeAudio);
         }
+
         analyzeAudio();
       });
     }

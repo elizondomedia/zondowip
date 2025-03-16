@@ -146,7 +146,7 @@
   </div>
 
   <!-- ✅ Frequency Guide -->
-  <div id="freqBox">
+  <div id="freqBox" class="collapsed">
     <h3>Frequency Colors</h3>
     <ul>
       <li>144Hz - LightBlue</li>
@@ -208,7 +208,7 @@
 
     function renderFrame() {
       requestAnimationFrame(renderFrame);
-      if (!isMicActive) return;
+      if (!isMicActive || bgSelector.value !== "AUTO") return;
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
       analyser.getByteFrequencyData(dataArray);
       const freq = Math.max(...dataArray);
@@ -217,6 +217,8 @@
     }
 
     micButton.addEventListener('click', startMic);
+    freqToggleBtn.addEventListener('click', () => freqBox.classList.toggle('collapsed'));
+    bgSelector.addEventListener('change', () => gifImage.src = `https://elizondomedia.github.io/zondowip/${bgSelector.value}`);
   </script>
 </body>
 </html>

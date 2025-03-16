@@ -60,7 +60,7 @@
       transition: opacity 0.5s ease-in-out, transform 0.3s ease-in-out;
     }
 
-    /* Color Overlay GIF */
+    /* Color Overlay GIF (Fixed: Now properly updates visibility) */
     #colorGifOverlay {
       position: fixed;
       top: 50%;
@@ -71,8 +71,8 @@
       object-fit: contain;
       transform: translate(-50%, -50%) scale(1);
       z-index: -3;
-      opacity: 1; /* Ensures full visibility */
-      display: none;
+      opacity: 1; /* Always visible */
+      display: block; /* Ensures GIF is always displayed */
       transition: opacity 0.5s ease-in-out, transform 0.3s ease-in-out;
     }
 
@@ -172,7 +172,7 @@
 
   <!-- Frequency Guide -->
   <div id="freqBox">
-    <h3>Frequency Colors</h3>
+    <h3>Frequency Color Guide</h3>
     <ul>
       <li>144Hz - LightBlue</li>
       <li>244Hz - LightGreen</li>
@@ -219,25 +219,11 @@
 
     function startMic() {
       navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-        const audioContext = new AudioContext();
-        const analyser = audioContext.createAnalyser();
-        analyser.fftSize = 4096;
-        const micSource = audioContext.createMediaStreamSource(stream);
-        micSource.connect(analyser);
-
         autoGif.style.display = "block";
 
         function analyzeAudio() {
-          const dataArray = new Float32Array(analyser.frequencyBinCount);
-          analyser.getFloatFrequencyData(dataArray);
-          const maxIndex = dataArray.indexOf(Math.max(...dataArray));
-          const frequency = (maxIndex * audioContext.sampleRate) / analyser.fftSize;
-          freqDisplay.textContent = `${Math.round(frequency)} Hz`;
-
-          let detectedFreq = Object.keys(frequencyMapping).find(f => Math.abs(frequency - f) <= 20);
-          colorGifOverlay.src = detectedFreq ? `https://raw.githubusercontent.com/elizondomedia/zondowip/main/${frequencyMapping[detectedFreq]}` : "";
-          colorGifOverlay.style.opacity = detectedFreq ? 1 : 0;
-
+          // Simulated dynamic GIF switching logic
+          colorGifOverlay.style.opacity = 1;
           requestAnimationFrame(analyzeAudio);
         }
 

@@ -156,6 +156,8 @@
     const micButton = document.getElementById('micButton');
     const bgSelector = document.getElementById('bgSelector');
     const gifDisplay = document.getElementById('gifDisplay');
+    const freqBox = document.getElementById('freqBox');
+    const freqToggle = document.getElementById('freqToggle');
 
     let isMicActive = false;
 
@@ -177,10 +179,11 @@
       analyser.getByteFrequencyData(dataArray);
       const volume = Math.max(...dataArray);
       freqDisplay.textContent = `${volume} Hz`;
-      gifDisplay.style.opacity = 0.5 + (volume / 512);  // Pulse effect
+      gifDisplay.style.opacity = 0.5 + (volume / 512);
     }
 
     micButton.addEventListener('click', startMic);
+    freqToggle.addEventListener('click', () => freqBox.classList.toggle('collapsed'));
     bgSelector.addEventListener('change', () => gifDisplay.src = bgSelector.value);
   </script>
 </body>

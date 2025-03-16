@@ -45,7 +45,7 @@
       transition: opacity 0.5s ease-in-out;
     }
 
-    /* Foreground GIF (Changes on Selection) */
+    /* Foreground GIF (Changes Based on Frequency) */
     #gifDisplay {
       position: fixed;
       top: 50%;
@@ -152,7 +152,7 @@
 
   <!-- Frequency Guide -->
   <div id="freqBox" class="collapsed">
-    <h3>Frequency Guide</h3>
+    <h3>Frequency Colors</h3>
     <ul>
       <li>144Hz - LightBlue</li>
       <li>244Hz - LightGreen</li>
@@ -199,7 +199,7 @@
       navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
         const audioContext = new AudioContext();
         const analyser = audioContext.createAnalyser();
-        analyser.fftSize = 256;
+        analyser.fftSize = 2048;
         const micSource = audioContext.createMediaStreamSource(stream);
         micSource.connect(analyser);
 
@@ -211,14 +211,14 @@
           const volume = Math.max(...dataArray);
           freqDisplay.textContent = `${volume} Hz`;
 
-          autoGif.style.opacity = (volume / 150).toFixed(2);
+          autoGif.style.opacity = (volume / 999).toFixed(2);
 
-          if (bgSelector.value === "AUTO" && frequencyMapping[volume]) {
-            gifDisplay.src = `https://raw.githubusercontent.com/elizondomedia/zondowip/main/${frequencyMapping[volume]}`;
-            gifDisplay.style.opacity = 1;
-          } else {
-            gifDisplay.style.opacity = 0;
-          }
+          let closestFreq = Object.keys(frequencyMapping).reduce((prev, curr) => 
+            Math.abs(curr - volume) < Math.abs(prev - volume) ? curr : prev
+          );
+
+          gifDisplay.src = `https://raw.githubusercontent.com/elizondomedia/zondowip/main/${frequencyMapping[closestFreq]}`;
+          gifDisplay.style.opacity = 1;
 
           requestAnimationFrame(analyzeAudio);
         }

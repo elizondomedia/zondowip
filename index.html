@@ -99,15 +99,16 @@
       padding: 0;
     }
 
-    /* Live Hz Frequency Display */
+    /* Live Hz Frequency Display (Fixed Width) */
     #freqDisplay {
       font-size: 1.5rem;
       font-weight: bold;
       color: #33E4F4;
       text-shadow: 0px 0px 10px #33E4F4;
-      transition: color 0.3s ease-in-out;
+      width: 80px;  /* ✅ Fix width to prevent shifting */
+      display: inline-block;
+      text-align: center;
     }
-
   </style>
 </head>
 <body>
@@ -175,6 +176,7 @@
 
     let isMicActive = false;
     let audioContext, analyser, micStream;
+    let lastGif = null; // Prevent redundant GIF reloads
 
     const gifMap = {
       144: "LIGHTBLUE_144.GIF",
@@ -220,7 +222,11 @@
 
     function updateGIF(freq) {
       let closestFreq = Object.keys(gifMap).reduce((prev, curr) => Math.abs(curr - freq) < Math.abs(prev - freq) ? curr : prev);
-      gifImage.src = `https://elizondomedia.github.io/zondowip/${gifMap[closestFreq]}`;
+      let newGif = `https://elizondomedia.github.io/zondowip/${gifMap[closestFreq]}`;
+      if (newGif !== lastGif) { 
+        gifImage.src = newGif;
+        lastGif = newGif;
+      }
     }
 
     micButton.addEventListener('click', startMic);

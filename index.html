@@ -29,22 +29,21 @@
       z-index: -3;
     }
 
-    /* Auto Mode GIF Overlay (Mic Responsive - Starts Hidden) */
-    #autoGifOverlay {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      width: 80vw;
-      height: auto;
-      max-height: 80vh;
-      object-fit: contain;
-      transform: translate(-50%, -50%);
-      z-index: -2;
-      display: none; /* ✅ Starts completely hidden */
-      opacity: 0;
-      transition: opacity 0.3s ease-in-out;
-    }
-
+    /* Auto Mode GIF Overlay (Mic Responsive) */
+#autoGifOverlay {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 80vw;
+  height: auto;
+  max-height: 80vh;
+  object-fit: contain;
+  transform: translate(-50%, -50%);
+  z-index: -2;
+  opacity: 0; /* 🛠️ Hides it by default */
+  transition: opacity 0.5s ease-in-out;
+  display: none; /* 🛠️ Ensures it doesn't load visually */
+}
     /* Foreground GIF (Changes on Selection) */
     #gifDisplay {
       position: fixed;
@@ -178,14 +177,34 @@
     const freqBox = document.getElementById("freqBox");
 
     function startMic() {
-      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-        const audioContext = new AudioContext();
-        const analyser = audioContext.createAnalyser();
-        analyser.fftSize = 256;
-        const micSource = audioContext.createMediaStreamSource(stream);
-        micSource.connect(analyser);
+  navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+    const audioContext = new AudioContext();
+    const analyser = audioContext.createAnalyser();
+    analyser.fftSize = 256;
+    const micSource = audioContext.createMediaStreamSource(stream);
+    micSource.connect(analyser);
 
-        autoGif.style.display = "block"; // ✅ Show breathing GIF when mic starts
+    // 🛠️ Make sure autoGifOverlay is visible only after mic starts
+    autoGif.style.display = "block";
+
+    function analyzeAudio() {
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      analyser.getByteFrequencyData(dataArray);
+      const volume = Math.max(...dataArray);
+      freqDisplay.textContent = `${volume} Hz`;
+
+      // Change Hz text color dynamically
+      freqDisplay.style.color = getClosestFrequencyColor(volume);
+
+      // Smooth pulsing effect for breathing GIF
+      autoGif.style.opacity = (volume / 150).toFixed(2);
+
+      requestAnimationFrame(analyzeAudio);
+    }
+
+    analyzeAudio();
+  });
+}
 
         function analyzeAudio() {
           const dataArray = new Uint8Array(analyser.frequencyBinCount);

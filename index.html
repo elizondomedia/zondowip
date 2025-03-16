@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Zondo Visualizer</title>
   <style>
-    /* General Styling */
     body {
       margin: 0;
       padding: 0;
@@ -16,15 +15,14 @@
       text-align: center;
     }
 
-    /* Background Image */
-    #backgroundImage {
+    /* Background Container */
+    #bgContainer {
       position: fixed;
       top: 0;
       left: 0;
       width: 100vw;
       height: 100vh;
-      object-fit: cover;
-      z-index: -2;
+      z-index: -1;
     }
 
     /* GIF Display */
@@ -39,217 +37,58 @@
       z-index: -1;
       transition: opacity 0.5s ease-in-out;
     }
-
-    /* Controls Panel */
-    #controls {
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.7);
-      padding: 10px;
-      border-radius: 10px;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 10px;
-    }
-
-    /* Button & Select Styling */
-    button, select {
-      padding: 10px;
-      font-size: 1rem;
-      border-radius: 5px;
-      border: none;
-      cursor: pointer;
-    }
-
-    button {
-      background: #33E4F4;
-      color: white;
-    }
-
-    button:hover {
-      background: #F41FEA;
-    }
-
-    select {
-      background: white;
-      color: black;
-    }
-
-    /* Flashing Real-Time Frequency Display */
-    #activeFrequency {
-      position: absolute;
-      top: 10px;
-      right: 20px;
-      font-size: 1.5rem;
-      font-weight: bold;
-      color: white;
-      text-shadow: 0px 0px 10px white;
-      animation: flashText 0.5s infinite alternate;
-    }
-
-    @keyframes flashText {
-      0% { opacity: 1; }
-      100% { opacity: 0.5; }
-    }
-
-    /* Collapsible Frequency Legend */
-    #legendContainer {
-      position: absolute;
-      top: 10px;
-      left: 20px;
-      background: rgba(0, 0, 0, 0.8);
-      padding: 10px;
-      border-radius: 10px;
-      font-size: 0.9rem;
-      text-align: left;
-      max-width: 250px;
-      transition: max-height 0.5s ease, opacity 0.5s ease;
-    }
-
-    #legendContent {
-      display: none;
-    }
-
-    .fullscreen #legendContainer {
-      opacity: 0;
-      transition: opacity 0.5s ease;
-    }
-
-    /* Mobile Adjustments */
-    @media screen and (max-width: 600px) {
-      #gifDisplay {
-        width: 100vw;
-        height: 100vh;
-      }
-
-      #controls {
-        flex-direction: column;
-      }
-
-      #activeFrequency {
-        top: 40px;
-        right: 10px;
-        font-size: 1rem;
-      }
-
-      #legendContainer {
-        top: auto;
-        bottom: 80px;
-        left: 10px;
-        font-size: 0.8rem;
-      }
-    }
   </style>
 </head>
 <body>
 
-  <!-- Static Background Image -->
-  <img id="backgroundImage" src="default_background.png" alt="Background">
-
-  <!-- GIF Display -->
-  <img id="gifDisplay" src="WHITE_000.GIF" alt="Audio Visualizer GIF">
-
-  <!-- Active Frequency Display -->
-  <div id="activeFrequency">Hz: --</div>
-
-  <!-- Collapsible Frequency Legend -->
-  <div id="legendContainer">
-    <button id="legendToggle">📜 Show Frequencies</button>
-    <div id="legendContent">
-      <strong>Frequency - Color Mapping</strong><br>
-      144Hz - Light Blue<br>
-      244Hz - Light Green<br>
-      350Hz - Pink<br>
-      384Hz - Teal<br>
-      396Hz - Burgundy<br>
-      400Hz - Dark Green<br>
-      432Hz - Dark Purple<br>
-      480Hz - Dark Blue<br>
-      528Hz - Yellow<br>
-      540Hz - Turquoise<br>
-      700Hz - Orange<br>
-      768Hz - Light Purple<br>
-      852Hz - Silver<br>
-      963Hz - Gold<br>
-      All Other Hz - "White Noise"
-    </div>
+  <!-- Background Container -->
+  <div id="bgContainer">
+    <img id="gifDisplay" src="https://elizondomedia.github.io/zondowip/WHITE_000.GIF" alt="Visualizer GIF">
   </div>
 
   <!-- Controls -->
-  <div id="controls">
-    <button id="micButton">🎤 Start Microphone</button>
-    <button id="fullscreenButton">⛶ Fullscreen</button>
-    <select id="gifSelector">
-      <option value="AUTO">🔄 Auto (Mic Controlled)</option>
-      <option value="LIGHTBLUE_144.GIF">Light Blue</option>
-      <option value="LIGHTGREEN_244.GIF">Light Green</option>
-      <option value="PINK_350.GIF">Pink</option>
-      <option value="TEAL_384.GIF">Teal</option>
-      <option value="BURGUNDY_396.GIF">Burgundy</option>
-      <option value="DARKGREEN_400.GIF">Dark Green</option>
-      <option value="DARKPURPLE_432.GIF">Dark Purple</option>
-      <option value="DARKBLUE_480.GIF">Dark Blue</option>
-      <option value="YELLOW_528.GIF">Yellow</option>
-      <option value="TURQUOISE_540.GIF">Turquoise</option>
-      <option value="ORANGE_700.GIF">Orange</option>
-      <option value="LIGHTPURPLE_768.GIF">Light Purple</option>
-      <option value="SILVER_852.GIF">Silver</option>
-      <option value="GOLD_962.GIF">Gold</option>
-    </select>
-  </div>
+  <button id="bgButton">Change Background</button>
 
   <script>
-    let autoMode = true;
-    let currentGif = "WHITE_000.GIF";
+    let backgrounds = [
+      "https://elizondomedia.github.io/zondowip/BURGUNDY_396.GIF",
+      "https://elizondomedia.github.io/zondowip/DARKBLUE_480.GIF",
+      "https://elizondomedia.github.io/zondowip/DARKGREEN_400.GIF",
+      "https://elizondomedia.github.io/zondowip/DARKPURPLE_432.GIF",
+      "https://elizondomedia.github.io/zondowip/GOLD_962.GIF",
+      "https://elizondomedia.github.io/zondowip/LIGHTBLUE_144.GIF",
+      "https://elizondomedia.github.io/zondowip/LIGHTGREEN_244.GIF",
+      "https://elizondomedia.github.io/zondowip/LIGHTPURPLE_768.GIF",
+      "https://elizondomedia.github.io/zondowip/ORANGE_700.GIF",
+      "https://elizondomedia.github.io/zondowip/PINK_350.GIF",
+      "https://elizondomedia.github.io/zondowip/SILVER_852.GIF",
+      "https://elizondomedia.github.io/zondowip/TEAL_384.GIF",
+      "https://elizondomedia.github.io/zondowip/TURQUOISE_540.GIF",
+      "https://elizondomedia.github.io/zondowip/WHITE_000.GIF",
+      "https://elizondomedia.github.io/zondowip/YELLOW_528.GIF"
+    ];
 
+    let currentBgIndex = 0;
     const gifImage = document.getElementById("gifDisplay");
-    const micButton = document.getElementById("micButton");
-    const gifSelector = document.getElementById("gifSelector");
-    const fullscreenButton = document.getElementById("fullscreenButton");
-    const activeFrequencyText = document.getElementById("activeFrequency");
-    const legendToggle = document.getElementById("legendToggle");
-    const legendContent = document.getElementById("legendContent");
 
-    function changeGif(newSrc) {
-      if (newSrc !== currentGif) {
-        gifImage.style.opacity = 0;
-        setTimeout(() => {
-          gifImage.src = newSrc;
-          gifImage.onload = () => gifImage.style.opacity = 1;
-        }, 250);
-        currentGif = newSrc;
-      }
+    function changeBackground() {
+      currentBgIndex = (currentBgIndex + 1) % backgrounds.length;
+      let nextBg = backgrounds[currentBgIndex];
+
+      console.log(`🔄 Changing Background to: ${nextBg}`);
+
+      gifImage.style.opacity = 0; // Fade out
+      setTimeout(() => {
+        gifImage.src = nextBg + "?t=" + new Date().getTime(); // Bypass Cache
+        gifImage.onload = () => {
+          gifImage.style.opacity = 1; // Fade in when loaded
+          console.log(`✅ Background Changed to: ${nextBg}`);
+        };
+      }, 250);
     }
 
-    micButton.addEventListener("click", () => {
-      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-        const audioContext = new AudioContext();
-        const analyser = audioContext.createAnalyser();
-        analyser.fftSize = 256;
-        audioContext.createMediaStreamSource(stream).connect(analyser);
-
-        function analyzeAudio() {
-          const dataArray = new Uint8Array(analyser.frequencyBinCount);
-          analyser.getByteFrequencyData(dataArray);
-          const volume = Math.max(...dataArray);
-          activeFrequencyText.textContent = `Hz: ${Math.floor(volume)}`;
-
-          requestAnimationFrame(analyzeAudio);
-        }
-
-        analyzeAudio();
-      });
-    });
-
-    legendToggle.addEventListener("click", () => {
-      legendContent.style.display = legendContent.style.display === "none" ? "block" : "none";
-      legendToggle.textContent = legendContent.style.display === "none" ? "📜 Show Frequencies" : "📜 Hide Frequencies";
-    });
-
-    fullscreenButton.addEventListener("click", () => document.fullscreenElement ? document.exitFullscreen() : document.body.requestFullscreen());
+    document.getElementById("bgButton").addEventListener("click", changeBackground);
   </script>
+
 </body>
 </html>

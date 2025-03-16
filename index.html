@@ -130,20 +130,20 @@
     <div id="freqDisplay">0 Hz</div>
     <select id="bgSelector">
       <option value="AUTO">🔄 Auto (Mic Controlled)</option>
-      <option value="https://raw.githubusercontent.com/elizondomedia/zondowip/main/LIGHTBLUE_144.GIF">Light Blue</option>
-      <option value="https://raw.githubusercontent.com/elizondomedia/zondowip/main/LIGHTGREEN_244.GIF">Light Green</option>
-      <option value="https://raw.githubusercontent.com/elizondomedia/zondowip/main/PINK_350.GIF">Pink</option>
-      <option value="https://raw.githubusercontent.com/elizondomedia/zondowip/main/TEAL_384.GIF">Teal</option>
-      <option value="https://raw.githubusercontent.com/elizondomedia/zondowip/main/BURGUNDY_396.GIF">Burgundy</option>
-      <option value="https://raw.githubusercontent.com/elizondomedia/zondowip/main/DARKGREEN_400.GIF">Dark Green</option>
-      <option value="https://raw.githubusercontent.com/elizondomedia/zondowip/main/DARKPURPLE_432.GIF">Dark Purple</option>
-      <option value="https://raw.githubusercontent.com/elizondomedia/zondowip/main/DARKBLUE_480.GIF">Dark Blue</option>
-      <option value="https://raw.githubusercontent.com/elizondomedia/zondowip/main/YELLOW_528.GIF">Yellow</option>
-      <option value="https://raw.githubusercontent.com/elizondomedia/zondowip/main/TURQUOISE_540.GIF">Turquoise</option>
-      <option value="https://raw.githubusercontent.com/elizondomedia/zondowip/main/ORANGE_700.GIF">Orange</option>
-      <option value="https://raw.githubusercontent.com/elizondomedia/zondowip/main/LIGHTPURPLE_768.GIF">Light Purple</option>
-      <option value="https://raw.githubusercontent.com/elizondomedia/zondowip/main/SILVER_852.GIF">Silver</option>
-      <option value="https://raw.githubusercontent.com/elizondomedia/zondowip/main/GOLD_962.GIF">Gold</option>
+      <option value="LIGHTBLUE_144.GIF">Light Blue</option>
+      <option value="LIGHTGREEN_244.GIF">Light Green</option>
+      <option value="PINK_350.GIF">Pink</option>
+      <option value="TEAL_384.GIF">Teal</option>
+      <option value="BURGUNDY_396.GIF">Burgundy</option>
+      <option value="DARKGREEN_400.GIF">Dark Green</option>
+      <option value="DARKPURPLE_432.GIF">Dark Purple</option>
+      <option value="DARKBLUE_480.GIF">Dark Blue</option>
+      <option value="YELLOW_528.GIF">Yellow</option>
+      <option value="TURQUOISE_540.GIF">Turquoise</option>
+      <option value="ORANGE_700.GIF">Orange</option>
+      <option value="LIGHTPURPLE_768.GIF">Light Purple</option>
+      <option value="SILVER_852.GIF">Silver</option>
+      <option value="GOLD_962.GIF">Gold</option>
     </select>
     <button id="freqToggle">Show Freq Guide</button>
   </div>
@@ -189,7 +189,10 @@
           analyser.getByteFrequencyData(dataArray);
           const volume = Math.max(...dataArray);
           freqDisplay.textContent = `${volume} Hz`;
-          autoGif.style.opacity = volume / 100;
+          
+          // Smooth pulsing effect
+          autoGif.style.opacity = (volume / 150).toFixed(2);
+          
           requestAnimationFrame(analyzeAudio);
         }
         analyzeAudio();
@@ -200,8 +203,21 @@
       freqBox.classList.toggle("collapsed");
     }
 
+    function changeBackground() {
+      let selectedGif = bgSelector.value;
+      if (selectedGif === "AUTO") {
+        autoGif.style.display = "block";
+        gifDisplay.style.opacity = 0;
+      } else {
+        autoGif.style.display = "none";
+        gifDisplay.style.opacity = 1;
+        gifDisplay.src = `https://raw.githubusercontent.com/elizondomedia/zondowip/main/${selectedGif}`;
+      }
+    }
+
     document.getElementById("micButton").addEventListener("click", startMic);
     document.getElementById("freqToggle").addEventListener("click", toggleFreqGuide);
+    document.getElementById("bgSelector").addEventListener("change", changeBackground);
   </script>
 
 </body>

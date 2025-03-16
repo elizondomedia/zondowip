@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Zondo:) Frequency Visualizer</title>
+  <title>Zondo Frequency Visualizer</title>
   <style>
+    /* General Styling */
     body {
       margin: 0;
       padding: 0;
@@ -15,17 +16,17 @@
       text-align: center;
     }
 
-    /* Background Container */
+    /* Background GIF (Static) */
     #bgContainer {
       position: fixed;
       top: 0;
       left: 0;
       width: 100vw;
       height: 100vh;
-      z-index: -1;
+      z-index: -2;
     }
 
-    /* GIF Display */
+    /* Active GIF Display */
     #gifDisplay {
       position: fixed;
       top: 50%;
@@ -37,17 +38,111 @@
       z-index: -1;
       transition: opacity 0.5s ease-in-out;
     }
+
+    /* UI Controls */
+    #topBar {
+      position: fixed;
+      top: 10px;
+      left: 0;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      z-index: 2;
+    }
+
+    /* Button Styling */
+    button {
+      padding: 10px;
+      font-size: 1rem;
+      border-radius: 5px;
+      border: none;
+      cursor: pointer;
+      background: #33E4F4;
+      color: white;
+      transition: background 0.3s ease-in-out;
+    }
+
+    button:hover {
+      background: #F41FEA;
+    }
+
+    /* Frequency Guide */
+    #freqBox {
+      position: fixed;
+      bottom: 10px;
+      right: 10px;
+      background: rgba(0, 0, 0, 0.7);
+      color: #fff;
+      padding: 10px;
+      border-radius: 5px;
+      max-height: 900px;
+      overflow: hidden;
+      opacity: 1;
+      transition: max-height 0.5s ease, opacity 0.5s ease;
+      z-index: 2;
+      font-size: 0.95rem;
+    }
+
+    #freqBox.collapsed {
+      max-height: 0;
+      opacity: 0;
+      padding: 0;
+    }
+
+    /* Live Hz Frequency Display */
+    #freqDisplay {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #33E4F4;
+      text-shadow: 0px 0px 10px #33E4F4;
+      animation: flashText 0.5s infinite alternate;
+    }
+
+    @keyframes flashText {
+      0% { opacity: 1; }
+      100% { opacity: 0.5; }
+    }
   </style>
 </head>
 <body>
 
-  <!-- Background Container -->
+  <!-- Static Background GIF -->
   <div id="bgContainer">
-    <img id="gifDisplay" src="https://elizondomedia.github.io/zondowip/WHITE_000.GIF" alt="Visualizer GIF">
+    <img id="staticBg" src="https://elizondomedia.github.io/zondowip/default_background.GIF" alt="Background GIF">
   </div>
 
-  <!-- Controls -->
-  <button id="bgButton">Change Background</button>
+  <!-- Active GIF Display -->
+  <img id="gifDisplay" src="https://elizondomedia.github.io/zondowip/WHITE_000.GIF" alt="Visualizer GIF">
+
+  <!-- UI Controls -->
+  <div id="topBar">
+    <button id="micButton">🎤 Start Mic</button>
+    <div id="freqDisplay">0 Hz</div>
+    <button id="bgButton">Change Background</button>
+    <button id="freqToggle">Show Freq Guide</button>
+  </div>
+
+  <!-- ✅ Frequency Guide -->
+  <div id="freqBox">
+    <h3>Frequency Colors</h3>
+    <ul>
+      <li>144Hz - LightBlue</li>
+      <li>244Hz - LightGreen</li>
+      <li>350Hz - Pink</li>
+      <li>384Hz - Teal</li>
+      <li>396Hz - Burgundy</li>
+      <li>400Hz - DarkGreen</li>
+      <li>432Hz - DarkPurple</li>
+      <li>480Hz - DarkBlue</li>
+      <li>528Hz - Yellow</li>
+      <li>540Hz - Turquoise</li>
+      <li>700Hz - Orange</li>
+      <li>768Hz - LightPurple</li>
+      <li>852Hz - Silver</li>
+      <li>963Hz - Gold</li>
+    </ul>
+  </div>
 
   <script>
     let backgrounds = [
@@ -70,6 +165,11 @@
 
     let currentBgIndex = 0;
     const gifImage = document.getElementById("gifDisplay");
+    const freqDisplay = document.getElementById("freqDisplay");
+    const micButton = document.getElementById("micButton");
+    const bgButton = document.getElementById("bgButton");
+    const freqToggleBtn = document.getElementById("freqToggle");
+    const freqBox = document.getElementById("freqBox");
 
     function changeBackground() {
       currentBgIndex = (currentBgIndex + 1) % backgrounds.length;
@@ -87,7 +187,36 @@
       }, 250);
     }
 
-    document.getElementById("bgButton").addEventListener("click", changeBackground);
+    function startMic() {
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+        const audioContext = new AudioContext();
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        audioContext.createMediaStreamSource(stream).connect(analyser);
+
+        function analyzeAudio() {
+          const dataArray = new Uint8Array(analyser.frequencyBinCount);
+          analyser.getByteFrequencyData(dataArray);
+          const volume = Math.max(...dataArray);
+          freqDisplay.textContent = `${Math.floor(volume)} Hz`;
+
+          requestAnimationFrame(analyzeAudio);
+        }
+
+        analyzeAudio();
+      }).catch(err => {
+        console.error("Microphone Access Denied:", err);
+        alert("Microphone access is required for the visualizer.");
+      });
+    }
+
+    micButton.addEventListener("click", startMic);
+    bgButton.addEventListener("click", changeBackground);
+
+    freqToggleBtn.addEventListener("click", () => {
+      freqBox.classList.toggle("collapsed");
+      freqToggleBtn.textContent = freqBox.classList.contains("collapsed") ? "Show Freq Guide" : "Hide Freq Guide";
+    });
   </script>
 
 </body>

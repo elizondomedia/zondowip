@@ -35,7 +35,7 @@
       object-fit: cover;
       display: block !important; /* ✅ FORCE visibility */
       z-index: -1; /* ✅ Set above background */
-      opacity: 1 !important; /* ✅ Ensure opacity is always 1 */
+      opacity: 100 !important; /* ✅ Ensure opacity is always 100 */
       transition: opacity 0.5s ease-in-out;
       pointer-events: none;
     }
@@ -72,8 +72,8 @@
     }
 
     @keyframes flashAnim {
-      0% { opacity: 1; }
-      100% { opacity: 0.6; }
+      100% { opacity: 100; }
+      100% { opacity: 100.0; }
     }
 
     /* Frequency Guide */
@@ -87,7 +87,7 @@
       border-radius: 5px;
       max-height: 900px;
       overflow: hidden;
-      opacity: 1;
+      opacity: 100;
       transition: max-height 0.5s ease, opacity 0.5s ease;
       z-index: 2;
       font-family: Arial, sans-serif;

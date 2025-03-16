@@ -16,7 +16,7 @@
       text-align: center;
     }
 
-    /* Static Background (NEVER CHANGES) */
+    /* Static Background (Always Visible) */
     #backgroundImage {
       position: fixed;
       top: 50%;
@@ -29,7 +29,7 @@
       z-index: -3; /* Always in the back */
     }
 
-    /* Dynamic Foreground GIF (Auto Mode - Pulses with Mic) */
+    /* Auto Mode GIF (Pulses on Mic Input) */
     #autoGifOverlay {
       position: fixed;
       top: 50%;
@@ -39,12 +39,12 @@
       max-height: 80vh;
       object-fit: contain;
       transform: translate(-50%, -50%);
-      z-index: -2; /* Sits above static background */
-      opacity: 0;  /* Starts invisible */
+      z-index: -2;
+      opacity: 0; /* Starts hidden */
       transition: opacity 0.3s ease-in-out;
     }
 
-    /* Foreground GIF (Manual Mode - Replaces Auto GIF) */
+    /* Foreground GIF (Changes on Selection) */
     #gifDisplay {
       position: fixed;
       top: 50%;
@@ -54,11 +54,11 @@
       max-height: 80vh;
       object-fit: contain;
       transform: translate(-50%, -50%);
-      z-index: -1; /* Above auto overlay, below UI */
+      z-index: -1;
       transition: opacity 0.3s ease-in-out;
     }
 
-    /* Controls Panel */
+    /* Controls */
     #controls {
       position: absolute;
       top: 10px;
@@ -115,13 +115,13 @@
 </head>
 <body>
 
-  <!-- Static Background (NEVER CHANGES) -->
+  <!-- Static Background (Never Changes) -->
   <img id="backgroundImage" src="https://raw.githubusercontent.com/elizondomedia/zondowip/main/default_background.GIF" alt="Static Background GIF">
 
-  <!-- Auto Mode GIF Overlay (Mic Controlled Pulsing) -->
+  <!-- Auto Mode GIF Overlay (Mic Responsive) -->
   <img id="autoGifOverlay" src="https://raw.githubusercontent.com/elizondomedia/zondowip/main/ZONDO_GIF.GIF" alt="Mic Responsive GIF">
 
-  <!-- Foreground GIF (Changes on Selection/Mic) -->
+  <!-- Foreground GIF (Changes on Selection) -->
   <img id="gifDisplay" src="https://raw.githubusercontent.com/elizondomedia/zondowip/main/ZONDO_GIF.GIF" alt="Audio Visualizer GIF">
 
   <!-- Controls -->
@@ -148,41 +148,36 @@
     <button id="freqToggle">Show Freq Guide</button>
   </div>
 
+  <!-- Frequency Guide -->
+  <div id="freqBox" class="collapsed">
+    <h3>Frequency Colors</h3>
+    <ul>
+      <li>144Hz - Light Blue</li>
+      <li>244Hz - Light Green</li>
+      <li>350Hz - Pink</li>
+      <li>384Hz - Teal</li>
+      <li>396Hz - Burgundy</li>
+      <li>400Hz - Dark Green</li>
+      <li>432Hz - Dark Purple</li>
+      <li>480Hz - Dark Blue</li>
+      <li>528Hz - Yellow</li>
+      <li>540Hz - Turquoise</li>
+      <li>700Hz - Orange</li>
+      <li>768Hz - Light Purple</li>
+      <li>852Hz - Silver</li>
+      <li>963Hz - Gold</li>
+    </ul>
+  </div>
+
   <script>
-    const freqDisplay = document.getElementById('freqDisplay');
-    const micButton = document.getElementById('micButton');
-    const bgSelector = document.getElementById('bgSelector');
-    const autoGifOverlay = document.getElementById('autoGifOverlay');
-    const gifDisplay = document.getElementById('gifDisplay');
     const freqBox = document.getElementById('freqBox');
     const freqToggle = document.getElementById('freqToggle');
 
-    let isMicActive = false;
-
-    function startMic() {
-      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-        let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        let analyser = audioCtx.createAnalyser();
-        analyser.fftSize = 1024;
-        let source = audioCtx.createMediaStreamSource(stream);
-        source.connect(analyser);
-        isMicActive = true;
-        renderFrame(analyser);
-      }).catch(err => alert("Microphone access required."));
-    }
-
-    function renderFrame(analyser) {
-      requestAnimationFrame(() => renderFrame(analyser));
-      const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      analyser.getByteFrequencyData(dataArray);
-      const volume = Math.max(...dataArray);
-      freqDisplay.textContent = `${volume} Hz`;
-      autoGifOverlay.style.opacity = 0.2 + (volume / 512);  /* Pulsing Effect */
-    }
-
-    micButton.addEventListener('click', startMic);
-    freqToggle.addEventListener('click', () => freqBox.classList.toggle('collapsed'));
-    bgSelector.addEventListener('change', () => gifDisplay.src = bgSelector.value);
+    freqToggle.addEventListener('click', () => {
+      freqBox.classList.toggle('collapsed');
+      freqToggle.textContent = freqBox.classList.contains('collapsed') ? 'Show Freq Guide' : 'Hide Freq Guide';
+    });
   </script>
+
 </body>
 </html>

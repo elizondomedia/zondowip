@@ -72,7 +72,7 @@
       transform: translate(-50%, -50%) scale(1);
       z-index: -3;
       opacity: 0;
-      display: none; /* Hide on load */
+      display: none;
       transition: opacity 0.5s ease-in-out;
     }
 
@@ -199,6 +199,7 @@
     const autoGif = document.getElementById("autoGifOverlay");
     const colorGifOverlay = document.getElementById("colorGifOverlay");
     const freqDisplay = document.getElementById("freqDisplay");
+    const freqBox = document.getElementById("freqBox");
 
     function startMic() {
       navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
@@ -226,7 +227,12 @@
       }).catch(error => console.error("Mic Access Denied", error));
     }
 
+    function toggleFreqGuide() {
+      freqBox.classList.toggle("visible");
+    }
+
     document.getElementById("micButton").addEventListener("click", startMic);
+    document.getElementById("freqToggle").addEventListener("click", toggleFreqGuide);
   </script>
 </body>
 </html>

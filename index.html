@@ -29,8 +29,8 @@
       z-index: -3;
     }
 
-    /* ZONDO GIF Overlay (Breathing Effect) */
-    #zondoGifOverlay {
+    /* Auto Mode GIF Overlay (Mic Responsive) */
+    #autoGifOverlay {
       position: fixed;
       top: 50%;
       left: 50%;
@@ -41,7 +41,7 @@
       transform: translate(-50%, -50%);
       z-index: -2;
       opacity: 0; /* Starts hidden */
-      transition: opacity 0.1s ease-in-out;
+      transition: opacity 0.2s ease-in-out;
     }
 
     /* Foreground GIF (Changes on Selection) */
@@ -118,8 +118,8 @@
   <!-- Static Background (Never Changes) -->
   <img id="backgroundImage" src="https://raw.githubusercontent.com/elizondomedia/zondowip/main/default_background.GIF" alt="Static Background GIF">
 
-  <!-- ZONDO Overlay (Pulses to Mic Input) -->
-  <img id="zondoGifOverlay" src="https://raw.githubusercontent.com/elizondomedia/zondowip/main/ZONDO_GIF.GIF" alt="Zondo Overlay GIF">
+  <!-- Auto Mode GIF Overlay (Mic Responsive) -->
+  <img id="autoGifOverlay" src="https://raw.githubusercontent.com/elizondomedia/zondowip/main/ZONDO_GIF.GIF" alt="Mic Responsive GIF">
 
   <!-- Foreground GIF (Changes on Selection) -->
   <img id="gifDisplay" src="https://raw.githubusercontent.com/elizondomedia/zondowip/main/ZONDO_GIF.GIF" alt="Audio Visualizer GIF">
@@ -170,7 +170,7 @@
   </div>
 
   <script>
-    const zondoGif = document.getElementById("zondoGifOverlay");
+    const autoGif = document.getElementById("autoGifOverlay");
     const gifDisplay = document.getElementById("gifDisplay");
     const bgSelector = document.getElementById("bgSelector");
     const freqDisplay = document.getElementById("freqDisplay");
@@ -180,7 +180,7 @@
       navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
         const audioContext = new AudioContext();
         const analyser = audioContext.createAnalyser();
-        analyser.fftSize = 512;
+        analyser.fftSize = 256;
         const micSource = audioContext.createMediaStreamSource(stream);
         micSource.connect(analyser);
 
@@ -190,9 +190,8 @@
           const volume = Math.max(...dataArray);
           freqDisplay.textContent = `${volume} Hz`;
           
-          // Smooth pulsing effect (More Sensitivity)
-          let pulseOpacity = Math.min(1, (volume / 80).toFixed(2));
-          zondoGif.style.opacity = pulseOpacity;
+          // Smooth pulsing effect
+          autoGif.style.opacity = (volume / 150).toFixed(2);
           
           requestAnimationFrame(analyzeAudio);
         }
@@ -206,9 +205,14 @@
 
     function changeBackground() {
       let selectedGif = bgSelector.value;
-      gifDisplay.src = selectedGif === "AUTO"
-        ? "https://raw.githubusercontent.com/elizondomedia/zondowip/main/ZONDO_GIF.GIF"
-        : `https://raw.githubusercontent.com/elizondomedia/zondowip/main/${selectedGif}`;
+      if (selectedGif === "AUTO") {
+        autoGif.style.display = "block";
+        gifDisplay.style.opacity = 0;
+      } else {
+        autoGif.style.display = "none";
+        gifDisplay.style.opacity = 1;
+        gifDisplay.src = `https://raw.githubusercontent.com/elizondomedia/zondowip/main/${selectedGif}`;
+      }
     }
 
     document.getElementById("micButton").addEventListener("click", startMic);

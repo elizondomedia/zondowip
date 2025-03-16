@@ -70,7 +70,7 @@
       font-weight: bold;
     }
 
-    /* Frequency Guide (Static in Top Right Corner) */
+    /* Frequency Guide (Hides in Fullscreen) */
     #freqGuide {
       position: absolute;
       top: 10px;
@@ -78,41 +78,64 @@
       font-size: 0.8rem;
       text-align: right;
       opacity: 0.6;
+      transition: opacity 0.5s ease-in-out;
     }
 
-    /* Dropdown for Color Selection */
-    #colorSelector {
-      position: absolute;
-      bottom: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 8px;
-      font-size: 1rem;
-      background: rgba(255, 255, 255, 0.2);
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
+    /* Hide Frequency Guide in Fullscreen */
+    .fullscreen #freqGuide {
+      opacity: 0;
+      pointer-events: none;
     }
 
-    #colorSelector:hover {
-      background: rgba(255, 255, 255, 0.4);
-    }
-
-    /* Fullscreen Mode */
-    #fullscreenButton {
+    /* Controls (Stacked Bottom Right) */
+    #controls {
       position: absolute;
       bottom: 10px;
       right: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    /* Button & Select Styling */
+    button, select {
+      padding: 10px;
       font-size: 1rem;
-      background: rgba(255, 255, 255, 0.2);
-      padding: 8px 12px;
+      background: #33E4F6;
+      color: black;
       border: none;
       border-radius: 5px;
       cursor: pointer;
     }
 
-    #fullscreenButton:hover {
-      background: rgba(255, 255, 255, 0.4);
+    button:hover, select:hover {
+      background: #F41FEA;
+      color: white;
+    }
+
+    /* Fullscreen Button */
+    #fullscreenButton {
+      font-size: 1rem;
+    }
+
+    /* Mobile Optimization */
+    @media (max-width: 600px) {
+      #freqGuide {
+        font-size: 0.6rem;
+        top: 5px;
+        right: 5px;
+      }
+
+      #controls {
+        bottom: 5px;
+        right: 5px;
+        gap: 5px;
+      }
+
+      button, select {
+        padding: 8px;
+        font-size: 0.9rem;
+      }
     }
   </style>
 </head>
@@ -130,8 +153,15 @@
   <!-- Frequency Display -->
   <div id="freqDisplay">0 Hz</div>
 
-  <!-- Frequency Color Guide (Static Text) -->
+  <!-- Frequency Guide (Hidden in Fullscreen) -->
   <div id="freqGuide">
+    <br>
+    *TO START:<br>
+    Press/Click<br>
+    Anywhere &<br>
+    Grant Mic Access<br>
+    (Does not record)<br>
+    <br>
     <strong>Frequency Color Guide:</strong><br>
     <br>
     144Hz - LightBlue<br>
@@ -149,43 +179,37 @@
     852Hz - Silver<br>
     963Hz - Gold<br>
     <br>
-    All Other Hz<br>
-    "White Noise"<br>
-    (Low and High)<br>
+    All Other Hz - "White Noise"<br>
     <br>
-    <br>
-    <br>
-    <br>
-    <br>
-    <br>
-    *TO START:<br>
-    Press/Click<br>
-    Anywhere &<br>
-    Grant Mic Access<br>
-    (Does not record)<br>
+    Visit ElizondoMedia.com<br>
+    for more info. on<br>
+    Frequency Science<br>
   </div>
 
-  <!-- Color Selection Dropdown -->
-  <select id="colorSelector">
-    <option value="AUTO">🔄 Auto (Mic Controlled)</option>
-    <option value="LIGHTBLUE_144.GIF">Light Blue</option>
-    <option value="LIGHTGREEN_244.GIF">Light Green</option>
-    <option value="PINK_350.GIF">Pink</option>
-    <option value="TEAL_384.GIF">Teal</option>
-    <option value="BURGUNDY_396.GIF">Burgundy</option>
-    <option value="DARKGREEN_400.GIF">Dark Green</option>
-    <option value="DARKPURPLE_432.GIF">Dark Purple</option>
-    <option value="DARKBLUE_480.GIF">Dark Blue</option>
-    <option value="YELLOW_528.GIF">Yellow</option>
-    <option value="TURQUOISE_540.GIF">Turquoise</option>
-    <option value="ORANGE_700.GIF">Orange</option>
-    <option value="LIGHTPURPLE_768.GIF">Light Purple</option>
-    <option value="SILVER_852.GIF">Silver</option>
-    <option value="GOLD_962.GIF">Gold</option>
-  </select>
+  <!-- Controls (Stacked Bottom Right) -->
+  <div id="controls">
+    <!-- Color Selection Dropdown -->
+    <select id="colorSelector">
+      <option value="AUTO">🔄 Auto (Mic Controlled)</option>
+      <option value="LIGHTBLUE_144.GIF">Light Blue</option>
+      <option value="LIGHTGREEN_244.GIF">Light Green</option>
+      <option value="PINK_350.GIF">Pink</option>
+      <option value="TEAL_384.GIF">Teal</option>
+      <option value="BURGUNDY_396.GIF">Burgundy</option>
+      <option value="DARKGREEN_400.GIF">Dark Green</option>
+      <option value="DARKPURPLE_432.GIF">Dark Purple</option>
+      <option value="DARKBLUE_480.GIF">Dark Blue</option>
+      <option value="YELLOW_528.GIF">Yellow</option>
+      <option value="TURQUOISE_540.GIF">Turquoise</option>
+      <option value="ORANGE_700.GIF">Orange</option>
+      <option value="LIGHTPURPLE_768.GIF">Light Purple</option>
+      <option value="SILVER_852.GIF">Silver</option>
+      <option value="GOLD_962.GIF">Gold</option>
+    </select>
 
-  <!-- Fullscreen Button -->
-  <button id="fullscreenButton">🔲 Fullscreen</button>
+    <!-- Fullscreen Button -->
+    <button id="fullscreenButton">🔲 Fullscreen</button>
+  </div>
 
   <script>
     const autoGif = document.getElementById("autoGifOverlay");
@@ -228,36 +252,22 @@
           const frequency = (maxIndex * audioContext.sampleRate) / analyser.fftSize;
           freqDisplay.textContent = `${Math.round(frequency)} Hz`;
 
-          if (autoMode) {
-            let detectedFreq = Object.keys(frequencyMapping).find(
-              f => Math.abs(frequency - f) <= 20
-            );
-
-            if (detectedFreq) {
-              colorGifOverlay.src = `https://raw.githubusercontent.com/elizondomedia/zondowip/main/${frequencyMapping[detectedFreq]}`;
-              colorGifOverlay.style.opacity = 1;
-              colorGifOverlay.style.display = "block";
-            } else {
-              colorGifOverlay.style.opacity = 0;
-              colorGifOverlay.style.display = "none";
-            }
-          }
-
           requestAnimationFrame(analyzeAudio);
         }
 
         analyzeAudio();
-      }).catch(error => console.error("Mic Access Denied", error));
+      });
     }
 
-    colorSelector.addEventListener("change", () => {
-      autoMode = colorSelector.value === "AUTO";
-      colorGifOverlay.src = autoMode ? "" : `https://raw.githubusercontent.com/elizondomedia/zondowip/main/${colorSelector.value}`;
-      colorGifOverlay.style.opacity = autoMode ? "0" : "1";
-      colorGifOverlay.style.display = autoMode ? "none" : "block";
+    fullscreenButton.addEventListener("click", () => {
+      document.documentElement.requestFullscreen();
+      document.body.classList.add("fullscreen");
     });
 
-    fullscreenButton.addEventListener("click", () => document.documentElement.requestFullscreen());
+    document.addEventListener("fullscreenchange", () => {
+      if (!document.fullscreenElement) document.body.classList.remove("fullscreen");
+    });
+
     document.addEventListener("click", startMic, { once: true });
   </script>
 </body>

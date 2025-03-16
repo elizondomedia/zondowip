@@ -26,19 +26,30 @@
     }
 
     /* Background GIFs */
-    .bgImage {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block !important; /* ✅ FORCE visibility */
-      z-index: -1; /* ✅ Set above background */
-      opacity: 1 !important; /* ✅ Ensure opacity is always 1 */
-      transition: opacity 0.5s ease-in-out;
-      pointer-events: none;
-    }
+    function changeBackground() {
+    currentBgIndex = (currentBgIndex + 1) % backgrounds.length;
+    let nextBg = backgrounds[currentBgIndex];
+
+    console.log(`🔄 Changing Background to: ${nextBg}`);
+    
+    let newImage = new Image();
+    newImage.src = nextBg + "?t=" + new Date().getTime(); // ✅ Force reload to prevent caching
+    newImage.className = "bgImage"; // ✅ Ensure correct class
+    newImage.style.display = "block"; // ✅ Make visible
+    newImage.style.opacity = "1"; // ✅ Ensure full visibility
+
+    newImage.onload = function() {
+        console.log(`✅ Background Loaded: ${nextBg}`);
+        let oldImage = document.getElementById("defaultBg");
+        if (oldImage) oldImage.remove(); // ✅ Remove previous image
+        newImage.id = "defaultBg";
+        document.getElementById("bgContainer").appendChild(newImage);
+    };
+
+    newImage.onerror = function() {
+        console.error(`❌ Error Loading Background: ${nextBg}`);
+    };
+}
 
     /* Canvas for Visualizer */
     #visualizer {
@@ -111,7 +122,7 @@
   </div>
 
   <!-- Canvas for the Visualizer -->
-  <canvas id="default_background.GIF"></canvas>
+  <canvas id="visualizer"></canvas>
 
   <!-- UI Controls -->
   <div id="topBar">

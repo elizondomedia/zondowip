@@ -192,7 +192,46 @@
           analyser.getByteFrequencyData(dataArray);
           const volume = Math.max(...dataArray);
           freqDisplay.textContent = `${volume} Hz`;
-          
+          // Frequency-to-Color Mapping
+const frequencyColors = {
+  144: "#33E4F4",  // Light Blue
+  244: "#90EE90",  // Light Green
+  350: "#FF69B4",  // Pink
+  384: "#008080",  // Teal
+  396: "#800020",  // Burgundy
+  400: "#006400",  // Dark Green
+  432: "#4B0082",  // Dark Purple
+  480: "#00008B",  // Dark Blue
+  528: "#FFD700",  // Yellow
+  540: "#40E0D0",  // Turquoise
+  700: "#FFA500",  // Orange
+  768: "#9370DB",  // Light Purple
+  852: "#C0C0C0",  // Silver
+  963: "#FFD700",  // Gold
+};
+
+function getClosestFrequencyColor(freq) {
+  let closestFreq = Object.keys(frequencyColors).reduce((prev, curr) => 
+    Math.abs(curr - freq) < Math.abs(prev - freq) ? curr : prev
+  );
+  return frequencyColors[closestFreq];
+}
+
+// Modify analyzeAudio function
+function analyzeAudio() {
+  const dataArray = new Uint8Array(analyser.frequencyBinCount);
+  analyser.getByteFrequencyData(dataArray);
+  const volume = Math.max(...dataArray);
+  freqDisplay.textContent = `${volume} Hz`;
+
+  // Change Hz text color dynamically
+  freqDisplay.style.color = getClosestFrequencyColor(volume);
+
+  // Smooth pulsing effect for the breathing GIF
+  autoGif.style.opacity = (volume / 150).toFixed(2);
+  
+  requestAnimationFrame(analyzeAudio);
+}
           // ✅ More dramatic breathing effect
           autoGif.style.opacity = Math.min(1, (volume / 100).toFixed(2));
           

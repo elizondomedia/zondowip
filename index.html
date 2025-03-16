@@ -29,7 +29,7 @@
       z-index: -4;
     }
 
-    /* Auto Mode GIF Overlay */
+    /* Base ZONDO GIF Layer */
     #autoGifOverlay {
       position: fixed;
       top: 50%;
@@ -40,24 +40,8 @@
       object-fit: contain;
       transform: translate(-50%, -50%);
       z-index: -2;
-      opacity: 0;
-      display: none;
-      transition: opacity 0.5s ease-in-out;
-    }
-
-    /* Foreground GIF */
-    #gifDisplay {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      width: 80vw;
-      height: auto;
-      max-height: 80vh;
-      object-fit: contain;
-      transform: translate(-50%, -50%) scale(1);
-      z-index: -1;
-      opacity: 0;
-      transition: opacity 0.5s ease-in-out, transform 0.3s ease-in-out;
+      opacity: 1;
+      display: block;
     }
 
     /* Color Overlay GIF */
@@ -70,7 +54,7 @@
       max-height: 80vh;
       object-fit: contain;
       transform: translate(-50%, -50%) scale(1);
-      z-index: -3;
+      z-index: -1;
       opacity: 0;
       display: none;
       transition: opacity 0.5s ease-in-out;
@@ -137,21 +121,18 @@
   <!-- Static Background -->
   <img id="backgroundImage" src="https://raw.githubusercontent.com/elizondomedia/zondowip/main/default_background.GIF" alt="Static Background GIF">
 
-  <!-- Auto Mode GIF Overlay -->
-  <img id="autoGifOverlay" src="https://raw.githubusercontent.com/elizondomedia/zondowip/main/ZONDO_GIF.GIF" alt="Mic Responsive GIF">
+  <!-- Base ZONDO GIF -->
+  <img id="autoGifOverlay" src="https://raw.githubusercontent.com/elizondomedia/zondowip/main/ZONDO_GIF.GIF" alt="Base ZONDO GIF">
 
   <!-- Color Overlay GIF -->
   <img id="colorGifOverlay" src="" alt="Selected Color Overlay GIF">
-
-  <!-- Foreground GIF -->
-  <img id="gifDisplay" alt="Audio Visualizer GIF">
 
   <!-- Controls -->
   <div id="controls">
     <button id="micButton">🎤 Start Mic</button>
     <div id="freqDisplay">0 Hz</div>
 
-    <!-- Dropdown Restored -->
+    <!-- Dropdown for Manual Mode -->
     <select id="bgSelector">
       <option value="AUTO">🔄 Auto (Mic Controlled)</option>
       <option value="LIGHTBLUE_144.GIF">Light Blue</option>
@@ -173,33 +154,31 @@
     <button id="freqToggle">Show Freq Guide</button>
   </div>
 
-  <!-- Frequency Guide -->
-  <div id="freqBox">
-    <h3>Frequency Color Guide</h3>
-    <ul>
-      <li>144Hz - LightBlue</li>
-      <li>244Hz - LightGreen</li>
-      <li>350Hz - Pink</li>
-      <li>384Hz - Teal</li>
-      <li>396Hz - Burgundy</li>
-      <li>400Hz - DarkGreen</li>
-      <li>432Hz - DarkPurple</li>
-      <li>480Hz - DarkBlue</li>
-      <li>528Hz - Yellow</li>
-      <li>540Hz - Turquoise</li>
-      <li>700Hz - Orange</li>
-      <li>768Hz - LightPurple</li>
-      <li>852Hz - Silver</li>
-      <li>963Hz - Gold</li>
-      <li>All Other Hz - "White Noise"</li>
-    </ul>
-  </div>
-
   <script>
     const autoGif = document.getElementById("autoGifOverlay");
     const colorGifOverlay = document.getElementById("colorGifOverlay");
     const freqDisplay = document.getElementById("freqDisplay");
     const freqBox = document.getElementById("freqBox");
+    const bgSelector = document.getElementById("bgSelector");
+
+    let autoMode = true; // Default is Auto Mode
+
+    const frequencyMapping = {
+      144: "LIGHTBLUE_144.GIF",
+      244: "LIGHTGREEN_244.GIF",
+      350: "PINK_350.GIF",
+      384: "TEAL_384.GIF",
+      396: "BURGUNDY_396.GIF",
+      400: "DARKGREEN_400.GIF",
+      432: "DARKPURPLE_432.GIF",
+      480: "DARKBLUE_480.GIF",
+      528: "YELLOW_528.GIF",
+      540: "TURQUOISE_540.GIF",
+      700: "ORANGE_700.GIF",
+      768: "LIGHTPURPLE_768.GIF",
+      852: "SILVER_852.GIF",
+      963: "GOLD_963.GIF"
+    };
 
     function startMic() {
       navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
@@ -209,8 +188,6 @@
         const micSource = audioContext.createMediaStreamSource(stream);
         micSource.connect(analyser);
 
-        autoGif.style.display = "block";
-
         function analyzeAudio() {
           const dataArray = new Float32Array(analyser.frequencyBinCount);
           analyser.getFloatFrequencyData(dataArray);
@@ -218,7 +195,20 @@
           const frequency = (maxIndex * audioContext.sampleRate) / analyser.fftSize;
           freqDisplay.textContent = `${Math.round(frequency)} Hz`;
 
-          autoGif.style.opacity = (frequency / 1500).toFixed(2);
+          if (autoMode) {
+            let detectedFreq = Object.keys(frequencyMapping).find(
+              f => Math.abs(frequency - f) <= 20
+            );
+
+            if (detectedFreq) {
+              colorGifOverlay.src = `https://raw.githubusercontent.com/elizondomedia/zondowip/main/${frequencyMapping[detectedFreq]}`;
+              colorGifOverlay.style.opacity = 1;
+              colorGifOverlay.style.display = "block";
+            } else {
+              colorGifOverlay.style.opacity = 0;
+              colorGifOverlay.style.display = "none";
+            }
+          }
 
           requestAnimationFrame(analyzeAudio);
         }
@@ -230,6 +220,16 @@
     function toggleFreqGuide() {
       freqBox.classList.toggle("visible");
     }
+
+    bgSelector.addEventListener("change", () => {
+      autoMode = bgSelector.value === "AUTO";
+
+      if (!autoMode) {
+        colorGifOverlay.src = `https://raw.githubusercontent.com/elizondomedia/zondowip/main/${bgSelector.value}`;
+        colorGifOverlay.style.opacity = 1;
+        colorGifOverlay.style.display = "block";
+      }
+    });
 
     document.getElementById("micButton").addEventListener("click", startMic);
     document.getElementById("freqToggle").addEventListener("click", toggleFreqGuide);

@@ -26,7 +26,7 @@
       max-height: 80vh;
       object-fit: contain;
       transform: translate(-50%, -50%);
-      z-index: -3;
+      z-index: -4;
     }
 
     /* Auto Mode GIF Overlay */
@@ -60,7 +60,7 @@
       transition: opacity 0.5s ease-in-out, transform 0.3s ease-in-out;
     }
 
-    /* Color Overlay GIF (Now Always Visible at 100% Opacity) */
+    /* Color Overlay GIF (Always Visible at 100% Opacity) */
     #colorGifOverlay {
       position: fixed;
       top: 50%;
@@ -71,7 +71,7 @@
       object-fit: contain;
       transform: translate(-50%, -50%) scale(1);
       z-index: -3;
-      opacity: 1; /* Now always fully visible */
+      opacity: 1;
       display: block;
       transition: transform 0.3s ease-in-out;
     }
@@ -141,7 +141,7 @@
   <img id="autoGifOverlay" src="https://raw.githubusercontent.com/elizondomedia/zondowip/main/ZONDO_GIF.GIF" alt="Mic Responsive GIF">
 
   <!-- Color Overlay GIF -->
-  <img id="colorGifOverlay" alt="Selected Color Overlay GIF">
+  <img id="colorGifOverlay" src="" alt="Selected Color Overlay GIF">
 
   <!-- Foreground GIF -->
   <img id="gifDisplay" alt="Audio Visualizer GIF">
@@ -150,6 +150,26 @@
   <div id="controls">
     <button id="micButton">🎤 Start Mic</button>
     <div id="freqDisplay">0 Hz</div>
+    
+    <!-- Dropdown Restored -->
+    <select id="bgSelector">
+      <option value="AUTO">🔄 Auto (Mic Controlled)</option>
+      <option value="LIGHTBLUE_144.GIF">Light Blue</option>
+      <option value="LIGHTGREEN_244.GIF">Light Green</option>
+      <option value="PINK_350.GIF">Pink</option>
+      <option value="TEAL_384.GIF">Teal</option>
+      <option value="BURGUNDY_396.GIF">Burgundy</option>
+      <option value="DARKGREEN_400.GIF">Dark Green</option>
+      <option value="DARKPURPLE_432.GIF">Dark Purple</option>
+      <option value="DARKBLUE_480.GIF">Dark Blue</option>
+      <option value="YELLOW_528.GIF">Yellow</option>
+      <option value="TURQUOISE_540.GIF">Turquoise</option>
+      <option value="ORANGE_700.GIF">Orange</option>
+      <option value="LIGHTPURPLE_768.GIF">Light Purple</option>
+      <option value="SILVER_852.GIF">Silver</option>
+      <option value="GOLD_963.GIF">Gold</option>
+    </select>
+
     <button id="freqToggle">Show Freq Guide</button>
   </div>
 
@@ -179,6 +199,7 @@
     const autoGif = document.getElementById("autoGifOverlay");
     const gifDisplay = document.getElementById("gifDisplay");
     const colorGifOverlay = document.getElementById("colorGifOverlay");
+    const bgSelector = document.getElementById("bgSelector");
     const freqDisplay = document.getElementById("freqDisplay");
     const freqBox = document.getElementById("freqBox");
 
@@ -199,7 +220,7 @@
           const frequency = (maxIndex * audioContext.sampleRate) / analyser.fftSize;
           freqDisplay.textContent = `${Math.round(frequency)} Hz`;
 
-          autoGif.style.opacity = (frequency / 1000).toFixed(2); // Adjusted for unlimited Hz
+          autoGif.style.opacity = (frequency / 1500).toFixed(2);
 
           requestAnimationFrame(analyzeAudio);
         }

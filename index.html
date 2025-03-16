@@ -40,12 +40,12 @@
       object-fit: contain;
       transform: translate(-50%, -50%);
       z-index: -2;
-      opacity: 0; /* Starts completely hidden */
-      display: none; /* Ensures it's not rendered until mic starts */
+      opacity: 0;
+      display: none;
       transition: opacity 0.5s ease-in-out;
     }
 
-    /* Foreground GIF (Changes on Selection) */
+    /* Foreground GIF (Changes on Hz Detection) */
     #gifDisplay {
       position: fixed;
       top: 50%;
@@ -56,7 +56,8 @@
       object-fit: contain;
       transform: translate(-50%, -50%);
       z-index: -1;
-      transition: opacity 0.3s ease-in-out;
+      opacity: 0; /* Hidden by default */
+      transition: opacity 0.5s ease-in-out;
     }
 
     /* Controls */
@@ -116,14 +117,14 @@
 </head>
 <body>
 
-  <!-- Static Background (Never Changes) -->
+  <!-- Static Background -->
   <img id="backgroundImage" src="https://raw.githubusercontent.com/elizondomedia/zondowip/main/default_background.GIF" alt="Static Background GIF">
 
-  <!-- Auto Mode GIF Overlay (Mic Responsive) -->
+  <!-- Auto Mode GIF Overlay -->
   <img id="autoGifOverlay" src="https://raw.githubusercontent.com/elizondomedia/zondowip/main/ZONDO_GIF.GIF" alt="Mic Responsive GIF">
 
-  <!-- Foreground GIF (Changes on Selection) -->
-  <img id="gifDisplay" src="https://raw.githubusercontent.com/elizondomedia/zondowip/main/ZONDO_GIF.GIF" alt="Audio Visualizer GIF">
+  <!-- Foreground GIF (Changes Based on Frequency) -->
+  <img id="gifDisplay" alt="Audio Visualizer GIF">
 
   <!-- Controls -->
   <div id="controls">
@@ -177,6 +178,23 @@
     const freqDisplay = document.getElementById("freqDisplay");
     const freqBox = document.getElementById("freqBox");
 
+    const frequencyMapping = {
+      144: "LIGHTBLUE_144.GIF",
+      244: "LIGHTGREEN_244.GIF",
+      350: "PINK_350.GIF",
+      384: "TEAL_384.GIF",
+      396: "BURGUNDY_396.GIF",
+      400: "DARKGREEN_400.GIF",
+      432: "DARKPURPLE_432.GIF",
+      480: "DARKBLUE_480.GIF",
+      528: "YELLOW_528.GIF",
+      540: "TURQUOISE_540.GIF",
+      700: "ORANGE_700.GIF",
+      768: "LIGHTPURPLE_768.GIF",
+      852: "SILVER_852.GIF",
+      963: "GOLD_962.GIF"
+    };
+
     function startMic() {
       navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
         const audioContext = new AudioContext();
@@ -185,7 +203,7 @@
         const micSource = audioContext.createMediaStreamSource(stream);
         micSource.connect(analyser);
 
-        autoGif.style.display = "block"; // Show the GIF when mic starts
+        autoGif.style.display = "block";
 
         function analyzeAudio() {
           const dataArray = new Uint8Array(analyser.frequencyBinCount);
@@ -193,8 +211,14 @@
           const volume = Math.max(...dataArray);
           freqDisplay.textContent = `${volume} Hz`;
 
-          // Smooth pulsing effect for breathing GIF
           autoGif.style.opacity = (volume / 150).toFixed(2);
+
+          if (frequencyMapping[volume]) {
+            gifDisplay.src = `https://raw.githubusercontent.com/elizondomedia/zondowip/main/${frequencyMapping[volume]}`;
+            gifDisplay.style.opacity = 1;
+          } else {
+            gifDisplay.style.opacity = 0;
+          }
 
           requestAnimationFrame(analyzeAudio);
         }
@@ -203,20 +227,8 @@
       });
     }
 
-    function toggleFreqGuide() {
-      freqBox.classList.toggle("collapsed");
-    }
-
-    function changeBackground() {
-      let selectedGif = bgSelector.value;
-      autoGif.style.display = selectedGif === "AUTO" ? "block" : "none";
-      gifDisplay.src = `https://raw.githubusercontent.com/elizondomedia/zondowip/main/${selectedGif}`;
-    }
-
     document.getElementById("micButton").addEventListener("click", startMic);
-    document.getElementById("freqToggle").addEventListener("click", toggleFreqGuide);
-    document.getElementById("bgSelector").addEventListener("change", changeBackground);
+    document.getElementById("freqToggle").addEventListener("click", () => freqBox.classList.toggle("collapsed"));
   </script>
-
 </body>
 </html>

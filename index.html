@@ -90,7 +90,7 @@
     #freqDisplay {
       font-size: 1.5rem;
       font-weight: bold;
-      width: 80px;
+      width: 120px;
       text-align: center;
     }
 
@@ -199,20 +199,21 @@
       navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
         const audioContext = new AudioContext();
         const analyser = audioContext.createAnalyser();
-        analyser.fftSize = 2048;
+        analyser.fftSize = 4096;
         const micSource = audioContext.createMediaStreamSource(stream);
         micSource.connect(analyser);
 
         autoGif.style.display = "block";
 
         function analyzeAudio() {
-          const dataArray = new Uint8Array(analyser.frequencyBinCount);
-          analyser.getByteFrequencyData(dataArray);
-          const volume = Math.max(...dataArray);
-          freqDisplay.textContent = `${volume} Hz`;
+          const dataArray = new Float32Array(analyser.frequencyBinCount);
+          analyser.getFloatFrequencyData(dataArray);
+          const maxIndex = dataArray.indexOf(Math.max(...dataArray));
+          const frequency = (maxIndex * audioContext.sampleRate) / analyser.fftSize;
+          freqDisplay.textContent = `${Math.round(frequency)} Hz`;
 
-          autoGif.style.opacity = (volume / 999).toFixed(2);
-          gifDisplay.style.transform = `translate(-50%, -50%) scale(${volume > 0 ? 0.85 : 1})`;
+          autoGif.style.opacity = (frequency / 999).toFixed(2);
+          gifDisplay.style.transform = `translate(-50%, -50%) scale(${frequency > 0 ? 0.85 : 1})`;
 
           requestAnimationFrame(analyzeAudio);
         }

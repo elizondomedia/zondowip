@@ -29,7 +29,7 @@
       z-index: -3;
     }
 
-    /* Auto Mode GIF Overlay (Mic Responsive) */
+    /* Auto Mode GIF Overlay (Mic Responsive - Starts Hidden) */
     #autoGifOverlay {
       position: fixed;
       top: 50%;
@@ -40,8 +40,9 @@
       object-fit: contain;
       transform: translate(-50%, -50%);
       z-index: -2;
-      opacity: 0; /* Starts hidden */
-      transition: opacity 0.2s ease-in-out;
+      display: none; /* ✅ Starts completely hidden */
+      opacity: 0;
+      transition: opacity 0.3s ease-in-out;
     }
 
     /* Foreground GIF (Changes on Selection) */
@@ -184,14 +185,16 @@
         const micSource = audioContext.createMediaStreamSource(stream);
         micSource.connect(analyser);
 
+        autoGif.style.display = "block"; // ✅ Show breathing GIF when mic starts
+
         function analyzeAudio() {
           const dataArray = new Uint8Array(analyser.frequencyBinCount);
           analyser.getByteFrequencyData(dataArray);
           const volume = Math.max(...dataArray);
           freqDisplay.textContent = `${volume} Hz`;
           
-          // Smooth pulsing effect
-          autoGif.style.opacity = (volume / 150).toFixed(2);
+          // ✅ More dramatic breathing effect
+          autoGif.style.opacity = Math.min(1, (volume / 100).toFixed(2));
           
           requestAnimationFrame(analyzeAudio);
         }
@@ -205,14 +208,8 @@
 
     function changeBackground() {
       let selectedGif = bgSelector.value;
-      if (selectedGif === "AUTO") {
-        autoGif.style.display = "block";
-        gifDisplay.style.opacity = 0;
-      } else {
-        autoGif.style.display = "none";
-        gifDisplay.style.opacity = 1;
-        gifDisplay.src = `https://raw.githubusercontent.com/elizondomedia/zondowip/main/${selectedGif}`;
-      }
+      autoGif.style.display = selectedGif === "AUTO" ? "block" : "none";
+      gifDisplay.src = `https://raw.githubusercontent.com/elizondomedia/zondowip/main/${selectedGif}`;
     }
 
     document.getElementById("micButton").addEventListener("click", startMic);

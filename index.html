@@ -27,7 +27,7 @@
       z-index: -2;
     }
 
-    /* GIF Display */
+    /* GIF Display - Scales Correctly */
     #gifDisplay {
       position: fixed;
       top: 50%;
@@ -95,29 +95,6 @@
       100% { opacity: 0.5; }
     }
 
-    /* Collapsible Frequency Legend */
-    #legendContainer {
-      position: absolute;
-      top: 10px;
-      left: 20px;
-      background: rgba(0, 0, 0, 0.8);
-      padding: 10px;
-      border-radius: 10px;
-      font-size: 0.9rem;
-      text-align: left;
-      max-width: 250px;
-      transition: max-height 0.5s ease, opacity 0.5s ease;
-    }
-
-    #legendContent {
-      display: none;
-    }
-
-    .fullscreen #legendContainer {
-      opacity: 0;
-      transition: opacity 0.5s ease;
-    }
-
     /* Mobile Adjustments */
     @media screen and (max-width: 600px) {
       #gifDisplay {
@@ -134,13 +111,6 @@
         right: 10px;
         font-size: 1rem;
       }
-
-      #legendContainer {
-        top: auto;
-        bottom: 80px;
-        left: 10px;
-        font-size: 0.8rem;
-      }
     }
   </style>
 </head>
@@ -154,29 +124,6 @@
 
   <!-- Active Frequency Display -->
   <div id="activeFrequency">Hz: --</div>
-
-  <!-- Collapsible Frequency Legend -->
-  <div id="legendContainer">
-    <button id="legendToggle">📜 Show Frequencies</button>
-    <div id="legendContent">
-      <strong>Frequency - Color Mapping</strong><br>
-      144Hz - Light Blue<br>
-      244Hz - Light Green<br>
-      350Hz - Pink<br>
-      384Hz - Teal<br>
-      396Hz - Burgundy<br>
-      400Hz - Dark Green<br>
-      432Hz - Dark Purple<br>
-      480Hz - Dark Blue<br>
-      528Hz - Yellow<br>
-      540Hz - Turquoise<br>
-      700Hz - Orange<br>
-      768Hz - Light Purple<br>
-      852Hz - Silver<br>
-      963Hz - Gold<br>
-      All Other Hz - "White Noise"
-    </div>
-  </div>
 
   <!-- Controls -->
   <div id="controls">
@@ -202,16 +149,34 @@
   </div>
 
   <script>
+    let audioContext, analyser;
     let autoMode = true;
     let currentGif = "WHITE_000.GIF";
 
+    const gifThresholds = [
+      { threshold: 0, file: "WHITE_000.GIF" },
+      { threshold: 144, file: "LIGHTBLUE_144.GIF" },
+      { threshold: 244, file: "LIGHTGREEN_244.GIF" },
+      { threshold: 350, file: "PINK_350.GIF" },
+      { threshold: 384, file: "TEAL_384.GIF" },
+      { threshold: 396, file: "BURGUNDY_396.GIF" },
+      { threshold: 400, file: "DARKGREEN_400.GIF" },
+      { threshold: 432, file: "DARKPURPLE_432.GIF" },
+      { threshold: 480, file: "DARKBLUE_480.GIF" },
+      { threshold: 528, file: "YELLOW_528.GIF" },
+      { threshold: 540, file: "TURQUOISE_540.GIF" },
+      { threshold: 700, file: "ORANGE_700.GIF" },
+      { threshold: 768, file: "LIGHTPURPLE_768.GIF" },
+      { threshold: 852, file: "SILVER_852.GIF" },
+      { threshold: 962, file: "GOLD_962.GIF" }
+    ];
+
+    const activeFrequencyText = document.getElementById("activeFrequency");
     const gifImage = document.getElementById("gifDisplay");
     const micButton = document.getElementById("micButton");
     const gifSelector = document.getElementById("gifSelector");
     const fullscreenButton = document.getElementById("fullscreenButton");
-    const activeFrequencyText = document.getElementById("activeFrequency");
-    const legendToggle = document.getElementById("legendToggle");
-    const legendContent = document.getElementById("legendContent");
+    const body = document.body;
 
     function changeGif(newSrc) {
       if (newSrc !== currentGif) {
@@ -224,32 +189,40 @@
       }
     }
 
+    function analyzeAudio() {
+      if (!autoMode || !analyser) return;
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      analyser.getByteFrequencyData(dataArray);
+      const volume = Math.max(...dataArray);
+      const matchedGif = gifThresholds.find(t => volume >= t.threshold)?.file || "WHITE_000.GIF";
+
+      if (matchedGif !== currentGif) changeGif(matchedGif);
+      activeFrequencyText.textContent = `Hz: ${Math.floor(volume)}`;
+
+      requestAnimationFrame(analyzeAudio);
+    }
+
     micButton.addEventListener("click", () => {
       navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-        const audioContext = new AudioContext();
-        const analyser = audioContext.createAnalyser();
+        audioContext = new AudioContext();
+        analyser = audioContext.createAnalyser();
         analyser.fftSize = 256;
         audioContext.createMediaStreamSource(stream).connect(analyser);
-
-        function analyzeAudio() {
-          const dataArray = new Uint8Array(analyser.frequencyBinCount);
-          analyser.getByteFrequencyData(dataArray);
-          const volume = Math.max(...dataArray);
-          activeFrequencyText.textContent = `Hz: ${Math.floor(volume)}`;
-
-          requestAnimationFrame(analyzeAudio);
-        }
-
         analyzeAudio();
       });
     });
 
-    legendToggle.addEventListener("click", () => {
-      legendContent.style.display = legendContent.style.display === "none" ? "block" : "none";
-      legendToggle.textContent = legendContent.style.display === "none" ? "📜 Show Frequencies" : "📜 Hide Frequencies";
+    gifSelector.addEventListener("change", () => {
+      autoMode = gifSelector.value === "AUTO";
+      if (!autoMode) {
+        changeGif(gifSelector.value);
+      }
     });
 
-    fullscreenButton.addEventListener("click", () => document.fullscreenElement ? document.exitFullscreen() : document.body.requestFullscreen());
+    fullscreenButton.addEventListener("click", () => {
+      body.classList.toggle("fullscreen");
+      document.fullscreenElement ? document.exitFullscreen() : body.requestFullscreen();
+    });
   </script>
 </body>
 </html>

@@ -60,7 +60,7 @@
       transition: opacity 0.5s ease-in-out, transform 0.3s ease-in-out;
     }
 
-    /* Color Overlay GIF (Always Visible at 100% Opacity) */
+    /* Color Overlay GIF */
     #colorGifOverlay {
       position: fixed;
       top: 50%;
@@ -71,9 +71,9 @@
       object-fit: contain;
       transform: translate(-50%, -50%) scale(1);
       z-index: -3;
-      opacity: 1;
-      display: block;
-      transition: transform 0.3s ease-in-out;
+      opacity: 0;
+      display: none; /* Hide on load */
+      transition: opacity 0.5s ease-in-out;
     }
 
     /* Controls */
@@ -150,7 +150,7 @@
   <div id="controls">
     <button id="micButton">🎤 Start Mic</button>
     <div id="freqDisplay">0 Hz</div>
-    
+
     <!-- Dropdown Restored -->
     <select id="bgSelector">
       <option value="AUTO">🔄 Auto (Mic Controlled)</option>
@@ -197,17 +197,14 @@
 
   <script>
     const autoGif = document.getElementById("autoGifOverlay");
-    const gifDisplay = document.getElementById("gifDisplay");
     const colorGifOverlay = document.getElementById("colorGifOverlay");
-    const bgSelector = document.getElementById("bgSelector");
     const freqDisplay = document.getElementById("freqDisplay");
-    const freqBox = document.getElementById("freqBox");
 
     function startMic() {
       navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
         const audioContext = new AudioContext();
         const analyser = audioContext.createAnalyser();
-        analyser.fftSize = 4096;
+        analyser.fftSize = 8192;
         const micSource = audioContext.createMediaStreamSource(stream);
         micSource.connect(analyser);
 
@@ -229,12 +226,7 @@
       }).catch(error => console.error("Mic Access Denied", error));
     }
 
-    function toggleFreqGuide() {
-      freqBox.classList.toggle("visible");
-    }
-
     document.getElementById("micButton").addEventListener("click", startMic);
-    document.getElementById("freqToggle").addEventListener("click", toggleFreqGuide);
   </script>
 </body>
 </html>

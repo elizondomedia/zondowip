@@ -16,20 +16,35 @@
       text-align: center;
     }
 
-    /* Static Background (Does Not Change) */
+    /* Static Background (NEVER CHANGES) */
     #backgroundImage {
       position: fixed;
       top: 50%;
       left: 50%;
-      width: 80vw;  
+      width: 80vw;
       height: auto;
       max-height: 80vh;
       object-fit: contain;
       transform: translate(-50%, -50%);
-      z-index: -2; /* Keeps it below foreground GIF */
+      z-index: -3; /* Always in the back */
     }
 
-    /* Foreground GIF (Changes with Mic & Selection) */
+    /* Dynamic Foreground GIF (Auto Mode - Pulses with Mic) */
+    #autoGifOverlay {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: 80vw;
+      height: auto;
+      max-height: 80vh;
+      object-fit: contain;
+      transform: translate(-50%, -50%);
+      z-index: -2; /* Sits above static background */
+      opacity: 0;  /* Starts invisible */
+      transition: opacity 0.3s ease-in-out;
+    }
+
+    /* Foreground GIF (Manual Mode - Replaces Auto GIF) */
     #gifDisplay {
       position: fixed;
       top: 50%;
@@ -39,7 +54,7 @@
       max-height: 80vh;
       object-fit: contain;
       transform: translate(-50%, -50%);
-      z-index: -1; /* Above background, below controls */
+      z-index: -1; /* Above auto overlay, below UI */
       transition: opacity 0.3s ease-in-out;
     }
 
@@ -101,7 +116,10 @@
 <body>
 
   <!-- Static Background (NEVER CHANGES) -->
-  <img id="backgroundImage" src="https://raw.githubusercontent.com/elizondomedia/zondowip/main/ZONDO_GIF.GIF" alt="Static Background GIF">
+  <img id="backgroundImage" src="https://raw.githubusercontent.com/elizondomedia/zondowip/main/default_background.GIF" alt="Static Background GIF">
+
+  <!-- Auto Mode GIF Overlay (Mic Controlled Pulsing) -->
+  <img id="autoGifOverlay" src="https://raw.githubusercontent.com/elizondomedia/zondowip/main/ZONDO_GIF.GIF" alt="Mic Responsive GIF">
 
   <!-- Foreground GIF (Changes on Selection/Mic) -->
   <img id="gifDisplay" src="https://raw.githubusercontent.com/elizondomedia/zondowip/main/ZONDO_GIF.GIF" alt="Audio Visualizer GIF">
@@ -130,31 +148,11 @@
     <button id="freqToggle">Show Freq Guide</button>
   </div>
 
-  <!-- Frequency Guide -->
-  <div id="freqBox" class="collapsed">
-    <h3>Frequency Colors</h3>
-    <ul>
-      <li>144Hz - LightBlue</li>
-      <li>244Hz - LightGreen</li>
-      <li>350Hz - Pink</li>
-      <li>384Hz - Teal</li>
-      <li>396Hz - Burgundy</li>
-      <li>400Hz - DarkGreen</li>
-      <li>432Hz - DarkPurple</li>
-      <li>480Hz - DarkBlue</li>
-      <li>528Hz - Yellow</li>
-      <li>540Hz - Turquoise</li>
-      <li>700Hz - Orange</li>
-      <li>768Hz - LightPurple</li>
-      <li>852Hz - Silver</li>
-      <li>963Hz - Gold</li>
-    </ul>
-  </div>
-
   <script>
     const freqDisplay = document.getElementById('freqDisplay');
     const micButton = document.getElementById('micButton');
     const bgSelector = document.getElementById('bgSelector');
+    const autoGifOverlay = document.getElementById('autoGifOverlay');
     const gifDisplay = document.getElementById('gifDisplay');
     const freqBox = document.getElementById('freqBox');
     const freqToggle = document.getElementById('freqToggle');
@@ -179,7 +177,7 @@
       analyser.getByteFrequencyData(dataArray);
       const volume = Math.max(...dataArray);
       freqDisplay.textContent = `${volume} Hz`;
-      gifDisplay.style.opacity = 0.5 + (volume / 512);
+      autoGifOverlay.style.opacity = 0.2 + (volume / 512);  /* Pulsing Effect */
     }
 
     micButton.addEventListener('click', startMic);

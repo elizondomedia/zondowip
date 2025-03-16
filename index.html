@@ -34,7 +34,7 @@
       height: 100%;
       object-fit: cover;
       transition: opacity 1s ease-in-out;
-      opacity: 1;
+      opacity: 0;
       pointer-events: none;
     }
 
@@ -168,8 +168,7 @@
     const freqToggleBtn = document.getElementById('freqToggle');
     const freqBox = document.getElementById('freqBox');
     const bgContainer = document.getElementById('bgContainer');
-    const defaultBg = document.getElementById('defaultBg');
-
+    
     let audioCtx, analyser, micStream;
     let isMicActive = false;
     let backgrounds = [
@@ -191,25 +190,60 @@
     ];
     let currentBgIndex = 0;
 
-    // Default Background Loader Check
-    defaultBg.onload = () => console.log("Default Background Loaded");
-    defaultBg.onerror = () => console.error("Error loading Default Background GIF");
+    function changeBackground() {
+      let nextBg = backgrounds[currentBgIndex];
 
-    // Microphone Initialization
+      const newBg = document.createElement("img");
+      newBg.src = nextBg;
+      newBg.className = "bgImage";
+      newBg.style.opacity = "0";
+      newBg.onload = () => {
+        bgContainer.appendChild(newBg);
+        requestAnimationFrame(() => {
+          newBg.style.opacity = "1";
+        });
+
+        setTimeout(() => {
+          const images = bgContainer.getElementsByClassName("bgImage");
+          while (images.length > 1) {
+            bgContainer.removeChild(images[0]);
+          }
+        }, 1000);
+      };
+
+      newBg.onerror = () => console.error(`Error loading background: ${nextBg}`);
+
+      currentBgIndex = (currentBgIndex + 1) % backgrounds.length;
+    }
+
     function startMic() {
-      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-        micStream = stream;
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        analyser = audioCtx.createAnalyser();
-        analyser.fftSize = 1024;
-        const source = audioCtx.createMediaStreamSource(stream);
-        source.connect(analyser);
-        isMicActive = true;
-        renderFrame();
-      }).catch(err => {
-        console.error("Microphone Access Denied:", err);
-        alert("Microphone access is required for the visualizer.");
-      });
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+          micStream = stream;
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          analyser = audioCtx.createAnalyser();
+          analyser.fftSize = 1024;
+          const source = audioCtx.createMediaStreamSource(stream);
+          source.connect(analyser);
+          isMicActive = true;
+          renderFrame();
+        })
+        .catch(err => {
+          console.error("Microphone Access Denied:", err);
+          alert("Microphone access is required for the visualizer.");
+        });
+    }
+
+    function stopMic() {
+      if (micStream) {
+        micStream.getTracks().forEach(track => track.stop());
+      }
+      if (audioCtx) {
+        audioCtx.close();
+        audioCtx = null;
+      }
+      isMicActive = false;
+      freqDisplay.textContent = "0 Hz";
     }
 
     function renderFrame() {
@@ -221,17 +255,12 @@
       freqDisplay.textContent = `${freq} Hz`;
     }
 
-    function changeBackground() {
-      currentBgIndex = (currentBgIndex + 1) % backgrounds.length;
-      let nextBg = backgrounds[currentBgIndex];
+    freqToggleBtn.addEventListener('click', () => {
+      freqBox.classList.toggle("collapsed");
+    });
 
-      defaultBg.src = nextBg;
-      defaultBg.onload = () => console.log(`Background Changed to: ${nextBg}`);
-      defaultBg.onerror = () => console.error(`Error Loading Background: ${nextBg}`);
-    }
-
-    bgButton.addEventListener('click', changeBackground);
-    micButton.addEventListener('click', () => (isMicActive ? stopMic() : startMic()));
+    bgButton.addEventListener("click", changeBackground);
+    micButton.addEventListener("click", () => (isMicActive ? stopMic() : startMic()));
   </script>
 </body>
 </html>

@@ -16,14 +16,20 @@
       text-align: center;
     }
 
-    /* Background GIF (Static) */
+    /* Static Background GIF (Covers Entire Screen) */
     #bgContainer {
       position: fixed;
       top: 0;
       left: 0;
       width: 100vw;
       height: 100vh;
-      z-index: -2;
+      z-index: -3;
+    }
+
+    #staticBg {
+      width: 100%;
+      height: 100%;
+      object-fit: cover; /* ✅ Ensures full coverage */
     }
 
     /* Active GIF Display */
@@ -59,12 +65,13 @@
       border: none;
       cursor: pointer;
       background: #33E4F4;
-      color: white;
-      transition: background 0.3s ease-in-out;
+      color: black; /* ✅ Updated Text Color */
+      transition: background 0.3s ease-in-out, color 0.3s ease-in-out;
     }
 
     button:hover {
       background: #F41FEA;
+      color: black; /* Ensure color stays black */
     }
 
     /* Frequency Guide */
@@ -90,19 +97,15 @@
       padding: 0;
     }
 
-    /* Live Hz Frequency Display */
+    /* Live Hz Frequency Display - Static Color */
     #freqDisplay {
       font-size: 1.5rem;
       font-weight: bold;
       color: #33E4F4;
       text-shadow: 0px 0px 10px #33E4F4;
-      animation: flashText 0.5s infinite alternate;
+      transition: color 0.3s ease-in-out;
     }
 
-    @keyframes flashText {
-      0% { opacity: 1; }
-      100% { opacity: 0.5; }
-    }
   </style>
 </head>
 <body>
@@ -145,6 +148,15 @@
   </div>
 
   <script>
+    const micButton = document.getElementById('micButton');
+    const bgButton = document.getElementById('bgButton');
+    const freqToggleBtn = document.getElementById('freqToggle');
+    const freqBox = document.getElementById('freqBox');
+    const freqDisplay = document.getElementById('freqDisplay');
+    const gifImage = document.getElementById('gifDisplay');
+
+    let isMicActive = false;
+
     let backgrounds = [
       "https://elizondomedia.github.io/zondowip/BURGUNDY_396.GIF",
       "https://elizondomedia.github.io/zondowip/DARKBLUE_480.GIF",
@@ -163,61 +175,41 @@
       "https://elizondomedia.github.io/zondowip/YELLOW_528.GIF"
     ];
 
-    let currentBgIndex = 0;
-    const gifImage = document.getElementById("gifDisplay");
-    const freqDisplay = document.getElementById("freqDisplay");
-    const micButton = document.getElementById("micButton");
-    const bgButton = document.getElementById("bgButton");
-    const freqToggleBtn = document.getElementById("freqToggle");
-    const freqBox = document.getElementById("freqBox");
-
-    function changeBackground() {
-      currentBgIndex = (currentBgIndex + 1) % backgrounds.length;
-      let nextBg = backgrounds[currentBgIndex];
-
-      console.log(`🔄 Changing Background to: ${nextBg}`);
-
-      gifImage.style.opacity = 0; // Fade out
-      setTimeout(() => {
-        gifImage.src = nextBg + "?t=" + new Date().getTime(); // Bypass Cache
-        gifImage.onload = () => {
-          gifImage.style.opacity = 1; // Fade in when loaded
-          console.log(`✅ Background Changed to: ${nextBg}`);
-        };
-      }, 250);
-    }
-
     function startMic() {
       navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-        const audioContext = new AudioContext();
-        const analyser = audioContext.createAnalyser();
-        analyser.fftSize = 256;
-        audioContext.createMediaStreamSource(stream).connect(analyser);
-
-        function analyzeAudio() {
-          const dataArray = new Uint8Array(analyser.frequencyBinCount);
-          analyser.getByteFrequencyData(dataArray);
-          const volume = Math.max(...dataArray);
-          freqDisplay.textContent = `${Math.floor(volume)} Hz`;
-
-          requestAnimationFrame(analyzeAudio);
-        }
-
-        analyzeAudio();
+        let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 1024;
+        let source = audioCtx.createMediaStreamSource(stream);
+        source.connect(analyser);
+        isMicActive = true;
+        renderFrame(analyser);
       }).catch(err => {
         console.error("Microphone Access Denied:", err);
         alert("Microphone access is required for the visualizer.");
       });
     }
 
-    micButton.addEventListener("click", startMic);
-    bgButton.addEventListener("click", changeBackground);
+    function renderFrame(analyser) {
+      requestAnimationFrame(() => renderFrame(analyser));
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      analyser.getByteFrequencyData(dataArray);
+      const freq = Math.max(...dataArray);
+      freqDisplay.textContent = `${freq} Hz`;
 
-    freqToggleBtn.addEventListener("click", () => {
-      freqBox.classList.toggle("collapsed");
-      freqToggleBtn.textContent = freqBox.classList.contains("collapsed") ? "Show Freq Guide" : "Hide Freq Guide";
+      // Dynamically update GIF based on frequency
+      let gifIndex = Math.floor(freq / 100) % backgrounds.length;
+      gifImage.src = backgrounds[gifIndex];
+    }
+
+    micButton.addEventListener('click', () => isMicActive ? stopMic() : startMic());
+
+    bgButton.addEventListener('click', () => gifImage.src = backgrounds[Math.floor(Math.random() * backgrounds.length)]);
+
+    freqToggleBtn.addEventListener('click', () => {
+      freqBox.classList.toggle('collapsed');
+      freqToggleBtn.textContent = freqBox.classList.contains('collapsed') ? 'Show Freq Guide' : 'Hide Freq Guide';
     });
   </script>
-
 </body>
 </html>

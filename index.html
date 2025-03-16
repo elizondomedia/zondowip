@@ -14,6 +14,8 @@
       color: #fff;
       font-family: sans-serif;
       text-align: center;
+      height: 100%;
+      width: 100%;
     }
 
     /* Static Background */
@@ -156,7 +158,7 @@
   <!-- Frequency Guide (Hidden in Fullscreen) -->
   <div id="freqGuide">
     <br>
-    *TO START:<br>
+    <strong>*TO START:</strong><br>
     Press/Click<br>
     Anywhere &<br>
     Grant Mic Access<br>
@@ -187,9 +189,11 @@
     <br>
     <br>
     <br>
-    Visit ElizondoMedia.com<br>
-    for more info. on<br>
+    Visit <strong>ElizondoMedia.com</strong><br>
+    For more information on<br>
+    <strong>Zondo :)</strong><br>
     Frequency Science<br>
+    <br>
   </div>
 
   <!-- Controls (Stacked Bottom Right) -->
@@ -218,7 +222,6 @@
   </div>
 
   <script>
-    const autoGif = document.getElementById("autoGifOverlay");
     const colorGifOverlay = document.getElementById("colorGifOverlay");
     const freqDisplay = document.getElementById("freqDisplay");
     const colorSelector = document.getElementById("colorSelector");
@@ -226,55 +229,40 @@
 
     let autoMode = true;
 
-    const frequencyMapping = {
-      144: "LIGHTBLUE_144.GIF",
-      244: "LIGHTGREEN_244.GIF",
-      350: "PINK_350.GIF",
-      384: "TEAL_384.GIF",
-      396: "BURGUNDY_396.GIF",
-      400: "DARKGREEN_400.GIF",
-      432: "DARKPURPLE_432.GIF",
-      480: "DARKBLUE_480.GIF",
-      528: "YELLOW_528.GIF",
-      540: "TURQUOISE_540.GIF",
-      700: "ORANGE_700.GIF",
-      768: "LIGHTPURPLE_768.GIF",
-      852: "SILVER_852.GIF",
-      963: "GOLD_962.GIF"
-    };
-
-    function startMic() {
-      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-        const audioContext = new AudioContext();
-        const analyser = audioContext.createAnalyser();
-        analyser.fftSize = 8192;
-        const micSource = audioContext.createMediaStreamSource(stream);
-        micSource.connect(analyser);
-
-        function analyzeAudio() {
-          const dataArray = new Float32Array(analyser.frequencyBinCount);
-          analyser.getFloatFrequencyData(dataArray);
-          const maxIndex = dataArray.indexOf(Math.max(...dataArray));
-          const frequency = (maxIndex * audioContext.sampleRate) / analyser.fftSize;
-          freqDisplay.textContent = `${Math.round(frequency)} Hz`;
-
-          requestAnimationFrame(analyzeAudio);
+    function toggleFullscreen() {
+      const elem = document.documentElement;
+      if (!document.fullscreenElement) {
+        if (elem.requestFullscreen) {
+          elem.requestFullscreen();
+        } else if (elem.mozRequestFullScreen) {
+          elem.mozRequestFullScreen();
+        } else if (elem.webkitRequestFullscreen) {
+          elem.webkitRequestFullscreen();
+        } else if (elem.msRequestFullscreen) {
+          elem.msRequestFullscreen();
         }
-
-        analyzeAudio();
-      });
+        document.body.classList.add("fullscreen");
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+        document.body.classList.remove("fullscreen");
+      }
     }
 
-    fullscreenButton.addEventListener("click", () => {
-      document.documentElement.requestFullscreen();
-      document.body.classList.add("fullscreen");
+    colorSelector.addEventListener("change", () => {
+      autoMode = colorSelector.value === "AUTO";
+      if (!autoMode) {
+        colorGifOverlay.src = `https://raw.githubusercontent.com/elizondomedia/zondowip/main/${colorSelector.value}`;
+        colorGifOverlay.style.opacity = 1;
+        colorGifOverlay.style.display = "block";
+      } else {
+        colorGifOverlay.style.opacity = 0;
+        colorGifOverlay.style.display = "none";
+      }
     });
 
-    document.addEventListener("fullscreenchange", () => {
-      if (!document.fullscreenElement) document.body.classList.remove("fullscreen");
-    });
-
-    document.addEventListener("click", startMic, { once: true });
+    fullscreenButton.addEventListener("click", toggleFullscreen);
   </script>
 </body>
 </html>

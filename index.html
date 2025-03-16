@@ -218,7 +218,17 @@
     }
 
     function toggleFreqGuide() {
-      freqBox.classList.toggle("visible");
+      if (freqBox.style.display === "block") {
+        freqBox.style.opacity = "0";
+        setTimeout(() => {
+          freqBox.style.display = "none";
+        }, 500); // Delay hiding until opacity transition is done
+      } else {
+        freqBox.style.display = "block";
+        setTimeout(() => {
+          freqBox.style.opacity = "1";
+        }, 10); // Small delay to trigger the transition
+      }
     }
 
     bgSelector.addEventListener("change", () => {

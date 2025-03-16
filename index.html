@@ -16,18 +16,31 @@
       text-align: center;
     }
 
-    /* Background GIF */
+    /* Static Background (Does Not Change) */
+    #backgroundImage {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: 80vw;  
+      height: auto;
+      max-height: 80vh;
+      object-fit: contain;
+      transform: translate(-50%, -50%);
+      z-index: -2; /* Keeps it below foreground GIF */
+    }
+
+    /* Foreground GIF (Changes with Mic & Selection) */
     #gifDisplay {
       position: fixed;
       top: 50%;
       left: 50%;
-      width: 80vw;  /* Adjusted to 80% */
+      width: 80vw;
       height: auto;
-      max-height: 80vh; /* Ensuring it doesn’t exceed */
+      max-height: 80vh;
       object-fit: contain;
       transform: translate(-50%, -50%);
-      z-index: -1;
-      transition: opacity 0.5s ease-in-out;
+      z-index: -1; /* Above background, below controls */
+      transition: opacity 0.3s ease-in-out;
     }
 
     /* Controls Panel */
@@ -60,7 +73,7 @@
     #freqDisplay {
       font-size: 1.5rem;
       font-weight: bold;
-      width: 80px;  /* Fixed width to avoid shifting */
+      width: 80px;
       text-align: center;
     }
 
@@ -87,7 +100,10 @@
 </head>
 <body>
 
-  <!-- GIF Display -->
+  <!-- Static Background (NEVER CHANGES) -->
+  <img id="backgroundImage" src="https://raw.githubusercontent.com/elizondomedia/zondowip/main/ZONDO_GIF.GIF" alt="Static Background GIF">
+
+  <!-- Foreground GIF (Changes on Selection/Mic) -->
   <img id="gifDisplay" src="https://raw.githubusercontent.com/elizondomedia/zondowip/main/ZONDO_GIF.GIF" alt="Audio Visualizer GIF">
 
   <!-- Controls -->
@@ -139,8 +155,6 @@
     const freqDisplay = document.getElementById('freqDisplay');
     const micButton = document.getElementById('micButton');
     const bgSelector = document.getElementById('bgSelector');
-    const freqToggleBtn = document.getElementById('freqToggle');
-    const freqBox = document.getElementById('freqBox');
     const gifDisplay = document.getElementById('gifDisplay');
 
     let isMicActive = false;
@@ -161,13 +175,12 @@
       requestAnimationFrame(() => renderFrame(analyser));
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
       analyser.getByteFrequencyData(dataArray);
-      const freq = Math.max(...dataArray);
-      freqDisplay.textContent = `${freq} Hz`;
-      if (bgSelector.value === "AUTO") gifDisplay.src = `https://raw.githubusercontent.com/elizondomedia/zondowip/main/ZONDO_GIF.GIF`;
+      const volume = Math.max(...dataArray);
+      freqDisplay.textContent = `${volume} Hz`;
+      gifDisplay.style.opacity = 0.5 + (volume / 512);  // Pulse effect
     }
 
-    micButton.addEventListener('click', () => isMicActive ? location.reload() : startMic());
-    freqToggleBtn.addEventListener('click', () => freqBox.classList.toggle('collapsed'));
+    micButton.addEventListener('click', startMic);
     bgSelector.addEventListener('change', () => gifDisplay.src = bgSelector.value);
   </script>
 </body>

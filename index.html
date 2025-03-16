@@ -29,7 +29,7 @@
       z-index: -3;
     }
 
-    /* ZONDO GIF Overlay (Always Pulses) */
+    /* ZONDO GIF Overlay (Breathing Effect) */
     #zondoGifOverlay {
       position: fixed;
       top: 50%;
@@ -118,7 +118,7 @@
   <!-- Static Background (Never Changes) -->
   <img id="backgroundImage" src="https://raw.githubusercontent.com/elizondomedia/zondowip/main/default_background.GIF" alt="Static Background GIF">
 
-  <!-- ZONDO Overlay (Always Pulses) -->
+  <!-- ZONDO Overlay (Pulses to Mic Input) -->
   <img id="zondoGifOverlay" src="https://raw.githubusercontent.com/elizondomedia/zondowip/main/ZONDO_GIF.GIF" alt="Zondo Overlay GIF">
 
   <!-- Foreground GIF (Changes on Selection) -->
@@ -190,8 +190,9 @@
           const volume = Math.max(...dataArray);
           freqDisplay.textContent = `${volume} Hz`;
           
-          // Smooth pulsing effect
-          zondoGif.style.opacity = (volume / 150).toFixed(2);
+          // Smooth pulsing effect (Higher Sensitivity)
+          let pulseOpacity = Math.min(1, (volume / 80).toFixed(2));
+          zondoGif.style.opacity = pulseOpacity;
           
           requestAnimationFrame(analyzeAudio);
         }
@@ -205,11 +206,9 @@
 
     function changeBackground() {
       let selectedGif = bgSelector.value;
-      if (selectedGif === "AUTO") {
-        gifDisplay.src = "https://raw.githubusercontent.com/elizondomedia/zondowip/main/ZONDO_GIF.GIF";
-      } else {
-        gifDisplay.src = `https://raw.githubusercontent.com/elizondomedia/zondowip/main/${selectedGif}`;
-      }
+      gifDisplay.src = selectedGif === "AUTO"
+        ? "https://raw.githubusercontent.com/elizondomedia/zondowip/main/ZONDO_GIF.GIF"
+        : `https://raw.githubusercontent.com/elizondomedia/zondowip/main/${selectedGif}`;
     }
 
     document.getElementById("micButton").addEventListener("click", startMic);

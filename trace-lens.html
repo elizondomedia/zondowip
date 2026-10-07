@@ -173,8 +173,48 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
 }
 .err.show { display: block; }
 
+/* Recording */
+:root { --rec: #D64545; }
+.rec-row { display: flex; align-items: center; gap: 10px; padding: 0 0 12px; }
+#recBtn {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 10px;
+  border: 1.5px solid var(--rec); background: none; border-radius: 14px;
+  padding: 11px 12px; font-weight: 600; font-size: 15px; cursor: pointer;
+}
+#recBtn .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--rec); }
+#recBtn.on { background: var(--rec); color: #fff; }
+#recBtn.on .dot { border-radius: 3px; background: #fff; }
+.chip {
+  border: 1px solid var(--line); background: none; border-radius: 14px;
+  padding: 11px 12px; font-size: 14px; color: var(--graphite-soft); cursor: pointer; white-space: nowrap;
+}
+.chip[aria-pressed="true"] { background: var(--blue-wash); color: var(--graphite); border-color: transparent; }
+#recBadge {
+  position: fixed; left: 14px; top: calc(env(safe-area-inset-top, 0px) + 12px); z-index: 7;
+  display: none; align-items: center; gap: 8px; border: 0;
+  background: var(--rec); color: #fff; border-radius: 999px;
+  padding: 7px 14px 7px 12px; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+#recBadge.show { display: flex; }
+#recBadge .sq { width: 10px; height: 10px; border-radius: 2px; background: #fff; }
+#saveSheet {
+  position: fixed; inset: 0; z-index: 12; display: none;
+  align-items: center; justify-content: center; padding: 20px;
+  background: rgba(15, 17, 19, 0.72);
+}
+#saveSheet.show { display: flex; }
+#saveSheet h2 { font-family: "Bricolage Grotesque", system-ui, sans-serif; font-size: 26px; margin: 0 0 12px; }
+#preview { width: 100%; max-height: 46vh; border-radius: 14px; background: #000; display: block; margin-bottom: 14px; }
+.ghost {
+  width: 100%; margin-top: 10px; border: 1px solid var(--line); background: none;
+  border-radius: 16px; padding: 14px; font-weight: 600; font-size: 16px; cursor: pointer;
+}
+.small { font-size: 13.5px; line-height: 1.45; color: var(--graphite-soft); margin: 12px 0 0; }
+
 @media (prefers-reduced-motion: no-preference) {
   .panel { transition: opacity .2s; }
+  #recBadge .sq { animation: blink 1.2s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: .35; } }
 }
 </style>
 </head>
@@ -197,6 +237,10 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
       <input id="opacity" type="range" min="5" max="95" value="50" step="1">
       <output id="opacityOut" for="opacity">50%</output>
     </div>
+    <div class="rec-row">
+      <button id="recBtn"><span class="dot"></span><span id="recLabel">Record</span></button>
+      <button class="chip" id="imgInVid" aria-pressed="true">Image in video</button>
+    </div>
     <div class="tools">
       <button class="tool" id="lockBtn" aria-pressed="false">
         <svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0"/></svg>Lock
@@ -218,6 +262,18 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
         <svg viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M10.6 6.1A10 10 0 0 1 12 6c6 0 9.5 6 9.5 6a17 17 0 0 1-3 3.6"/><path d="M6.4 7.4C3.9 9.1 2.5 12 2.5 12s3.5 6 9.5 6a9.6 9.6 0 0 0 4.2-1"/></svg>Hide
       </button>
     </div>
+  </div>
+</div>
+
+<button id="recBadge" aria-label="Stop recording"><span class="sq"></span><span id="recTime">0:00</span></button>
+
+<div id="saveSheet" role="dialog" aria-modal="true" aria-labelledby="saveTitle">
+  <div class="sheet">
+    <h2 id="saveTitle">Recording ready</h2>
+    <video id="preview" playsinline controls muted></video>
+    <button class="go" id="saveBtn">Save video</button>
+    <button class="ghost" id="discardBtn">Discard</button>
+    <p class="small">In the share menu, tap <strong>Save Video</strong> to put it in Photos, or <strong>Save to Files</strong>.</p>
   </div>
 </div>
 
@@ -398,7 +454,7 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
   stage.addEventListener('pointercancel', end);
   // Block iOS page zoom/scroll gestures
   ['gesturestart', 'gesturechange', 'touchmove'].forEach(t =>
-    document.addEventListener(t, e => { if (e.target.closest && !e.target.closest('input[type=range]')) e.preventDefault(); }, { passive: false }));
+    document.addEventListener(t, e => { if (e.target.closest && !e.target.closest('input[type=range], #saveSheet')) e.preventDefault(); }, { passive: false }));
 
   // ---------- Controls ----------
   const op = $('opacity');
@@ -429,6 +485,112 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
   });
   $('showBtn').addEventListener('click', () => {
     $('showBtn').classList.remove('show'); $('controls').classList.add('show');
+  });
+
+  // ---------- Recording ----------
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  let recorder = null, chunks = [], recStart = 0, recTimer = null, rafId = null, recFile = null;
+  let imageInVideo = true;
+
+  $('imgInVid').addEventListener('click', () => {
+    imageInVideo = !imageInVideo; toggle($('imgInVid'), imageInVideo);
+  });
+
+  function sizeCanvas() {
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const W = 1080, H = Math.round(W * vh / vw / 2) * 2;
+    canvas.width = W; canvas.height = H;
+  }
+  function drawFrame() {
+    const W = canvas.width, H = canvas.height;
+    const k = W / window.innerWidth;
+    ctx.globalAlpha = 1; ctx.filter = 'none';
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+    const vW = video.videoWidth, vH = video.videoHeight;
+    if (vW && vH) {
+      const s = Math.max(W / vW, H / vH);
+      ctx.drawImage(video, (W - vW * s) / 2, (H - vH * s) / 2, vW * s, vH * s);
+    }
+    if (imageInVideo && overlay.complete && overlay.naturalWidth) {
+      const w = parseFloat(overlay.style.width), h = parseFloat(overlay.style.height);
+      ctx.save();
+      ctx.translate(W / 2 + state.tx * k, H / 2 + state.ty * k);
+      ctx.rotate(state.rot);
+      ctx.scale(state.scale * k * (state.flip ? -1 : 1), state.scale * k);
+      ctx.globalAlpha = op.value / 100;
+      if (overlay.classList.contains('lines')) ctx.filter = 'grayscale(1) contrast(1.8) brightness(1.05)';
+      ctx.drawImage(overlay, -w / 2, -h / 2, w, h);
+      ctx.restore();
+    }
+    rafId = requestAnimationFrame(drawFrame);
+  }
+  function pickType() {
+    const types = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'];
+    return types.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || '';
+  }
+  function fmt(sec) { const m = Math.floor(sec / 60), s = Math.floor(sec % 60); return m + ':' + String(s).padStart(2, '0'); }
+
+  function startRec() {
+    if (!window.MediaRecorder || !canvas.captureStream) {
+      alert('Video recording isn’t supported in this browser. Update iOS, then open Trace Lens in Safari.');
+      return;
+    }
+    sizeCanvas(); drawFrame();
+    const type = pickType();
+    const out = canvas.captureStream(30);
+    try {
+      recorder = new MediaRecorder(out, type ? { mimeType: type, videoBitsPerSecond: 4000000 } : {});
+    } catch (_) { recorder = new MediaRecorder(out); }
+    chunks = [];
+    recorder.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+    recorder.onstop = finishRec;
+    recorder.start(1000);
+    recStart = Date.now();
+    $('recTime').textContent = '0:00';
+    recTimer = setInterval(() => { $('recTime').textContent = fmt((Date.now() - recStart) / 1000); }, 500);
+    $('recBtn').classList.add('on'); $('recLabel').textContent = 'Stop';
+    $('recBadge').classList.add('show');
+  }
+  function stopRec() {
+    if (recorder && recorder.state !== 'inactive') recorder.stop();
+    clearInterval(recTimer); cancelAnimationFrame(rafId);
+    $('recBtn').classList.remove('on'); $('recLabel').textContent = 'Record';
+    $('recBadge').classList.remove('show');
+  }
+  function finishRec() {
+    const type = (recorder && recorder.mimeType) || chunks[0]?.type || 'video/mp4';
+    const ext = type.includes('mp4') ? 'mp4' : 'webm';
+    const blob = new Blob(chunks, { type });
+    chunks = [];
+    const d = new Date(), pad = n => String(n).padStart(2, '0');
+    const name = `trace-lens-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.${ext}`;
+    recFile = new File([blob], name, { type });
+    const pv = $('preview');
+    if (pv.src) URL.revokeObjectURL(pv.src);
+    pv.src = URL.createObjectURL(blob);
+    $('saveSheet').classList.add('show');
+  }
+  $('recBtn').addEventListener('click', () => {
+    (recorder && recorder.state === 'recording') ? stopRec() : startRec();
+  });
+  $('recBadge').addEventListener('click', stopRec);
+
+  $('saveBtn').addEventListener('click', async () => {
+    if (!recFile) return;
+    if (navigator.canShare && navigator.canShare({ files: [recFile] })) {
+      try { await navigator.share({ files: [recFile] }); return; }
+      catch (e) { if (e && e.name === 'AbortError') return; }
+    }
+    const a = document.createElement('a');
+    a.href = $('preview').src; a.download = recFile.name;
+    document.body.appendChild(a); a.click(); a.remove();
+  });
+  $('discardBtn').addEventListener('click', () => {
+    const pv = $('preview'); pv.pause();
+    if (pv.src) { URL.revokeObjectURL(pv.src); pv.removeAttribute('src'); pv.load(); }
+    recFile = null;
+    $('saveSheet').classList.remove('show');
   });
 
   window.addEventListener('resize', () => { /* keep current placement */ });

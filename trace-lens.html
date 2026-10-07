@@ -186,8 +186,9 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
 #recBtn.on .dot { border-radius: 3px; background: #fff; }
 .chip {
   border: 1px solid var(--line); background: none; border-radius: 14px;
-  padding: 11px 12px; font-size: 14px; color: var(--graphite-soft); cursor: pointer; white-space: nowrap;
+  padding: 11px 10px; font-size: 13.5px; color: var(--graphite-soft); cursor: pointer; white-space: nowrap;
 }
+.chip:disabled { opacity: .45; }
 .chip[aria-pressed="true"] { background: var(--blue-wash); color: var(--graphite); border-color: transparent; }
 #recBadge {
   position: fixed; left: 14px; top: calc(env(safe-area-inset-top, 0px) + 12px); z-index: 7;
@@ -209,6 +210,12 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
   width: 100%; margin-top: 10px; border: 1px solid var(--line); background: none;
   border-radius: 16px; padding: 14px; font-weight: 600; font-size: 16px; cursor: pointer;
 }
+#buildBox { display: none; margin-bottom: 14px; }
+#buildBox.show { display: block; }
+#buildBox p { margin: 0 0 8px; font-size: 15px; }
+.bar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+#buildFill { height: 100%; width: 0; background: var(--blue); }
+.go:disabled, .ghost:disabled { opacity: .4; }
 .small { font-size: 13.5px; line-height: 1.45; color: var(--graphite-soft); margin: 12px 0 0; }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -239,7 +246,8 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
     </div>
     <div class="rec-row">
       <button id="recBtn"><span class="dot"></span><span id="recLabel">Record</span></button>
-      <button class="chip" id="imgInVid" aria-pressed="true">Image in video</button>
+      <button class="chip" id="imgInVid" aria-pressed="true">With image</button>
+      <button class="chip" id="lapseBtn" aria-pressed="false">Timelapse</button>
     </div>
     <div class="tools">
       <button class="tool" id="lockBtn" aria-pressed="false">
@@ -270,6 +278,10 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
 <div id="saveSheet" role="dialog" aria-modal="true" aria-labelledby="saveTitle">
   <div class="sheet">
     <h2 id="saveTitle">Recording ready</h2>
+    <div id="buildBox" role="status">
+      <p id="buildText">Building timelapse… keep the app open.</p>
+      <div class="bar"><div id="buildFill"></div></div>
+    </div>
     <video id="preview" playsinline controls muted></video>
     <button class="go" id="saveBtn">Save video</button>
     <button class="ghost" id="discardBtn">Discard</button>
@@ -497,12 +509,12 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
     imageInVideo = !imageInVideo; toggle($('imgInVid'), imageInVideo);
   });
 
-  function sizeCanvas() {
+  function sizeCanvas(W = 1080) {
     const vw = window.innerWidth, vh = window.innerHeight;
-    const W = 1080, H = Math.round(W * vh / vw / 2) * 2;
+    const H = Math.round(W * vh / vw / 2) * 2;
     canvas.width = W; canvas.height = H;
   }
-  function drawFrame() {
+  function paint() {
     const W = canvas.width, H = canvas.height;
     const k = W / window.innerWidth;
     ctx.globalAlpha = 1; ctx.filter = 'none';
@@ -523,13 +535,111 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
       ctx.drawImage(overlay, -w / 2, -h / 2, w, h);
       ctx.restore();
     }
-    rafId = requestAnimationFrame(drawFrame);
   }
+  function drawFrame() { paint(); rafId = requestAnimationFrame(drawFrame); }
   function pickType() {
     const types = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'];
     return types.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || '';
   }
   function fmt(sec) { const m = Math.floor(sec / 60), s = Math.floor(sec % 60); return m + ':' + String(s).padStart(2, '0'); }
+
+  // Timelapse state
+  let lapseMode = false, lapseFrames = [], lapseInterval = 500, lapseTimer = null, lapseBusy = false;
+  const LAPSE_MAX_HELD = 1800, OUT_FPS = 30, OUT_MAX_FRAMES = 1350; // ≤45s clip
+  $('lapseBtn').addEventListener('click', () => {
+    lapseMode = !lapseMode; toggle($('lapseBtn'), lapseMode);
+  });
+  function snapFrame() {
+    if (lapseBusy) return;
+    lapseBusy = true;
+    paint();
+    canvas.toBlob(b => {
+      lapseBusy = false;
+      if (!b) return;
+      lapseFrames.push(b);
+      if (lapseFrames.length >= LAPSE_MAX_HELD) {
+        // Keep memory bounded: drop every other frame and slow the capture rate
+        lapseFrames = lapseFrames.filter((_, i) => i % 2 === 0);
+        lapseInterval *= 2;
+        clearInterval(lapseTimer);
+        lapseTimer = setInterval(snapFrame, lapseInterval);
+      }
+    }, 'image/jpeg', 0.78);
+  }
+  function setRecUI(on) {
+    $('recBtn').classList.toggle('on', on); $('recLabel').textContent = on ? 'Stop' : 'Record';
+    $('recBadge').classList.toggle('show', on);
+    $('lapseBtn').disabled = on;
+  }
+  function startTimer() {
+    recStart = Date.now();
+    $('recTime').textContent = '0:00';
+    recTimer = setInterval(() => {
+      const t = (Date.now() - recStart) / 1000;
+      $('recTime').textContent = fmt(t) + (lapseMode ? '  ·  timelapse' : '');
+    }, 500);
+  }
+  function startLapse() {
+    sizeCanvas(720);
+    lapseFrames = []; lapseInterval = 500;
+    snapFrame();
+    lapseTimer = setInterval(snapFrame, lapseInterval);
+    startTimer(); setRecUI(true);
+  }
+  function stopLapse() {
+    clearInterval(lapseTimer); lapseTimer = null;
+    clearInterval(recTimer); setRecUI(false);
+    snapFrame();
+    setTimeout(buildLapse, 300);
+  }
+  const sleepUntil = t => new Promise(r => setTimeout(r, Math.max(0, t - performance.now())));
+  async function buildLapse() {
+    const frames = lapseFrames; lapseFrames = [];
+    if (frames.length < 2) { alert('That was too short for a timelapse. Record a little longer.'); return; }
+    const step = Math.max(1, Math.ceil(frames.length / OUT_MAX_FRAMES));
+    const pick = frames.filter((_, i) => i % step === 0);
+    const holdEnd = OUT_FPS * 1.5; // linger on the finished drawing
+    const total = pick.length + holdEnd;
+
+    $('saveTitle').textContent = 'Timelapse';
+    $('buildBox').classList.add('show'); $('buildFill').style.width = '0%';
+    $('preview').style.display = 'none';
+    $('saveBtn').disabled = true; $('discardBtn').disabled = true;
+    $('saveSheet').classList.add('show');
+
+    const out = canvas.captureStream(OUT_FPS);
+    const type = pickType();
+    let rec;
+    try { rec = new MediaRecorder(out, type ? { mimeType: type, videoBitsPerSecond: 5000000 } : {}); }
+    catch (_) { rec = new MediaRecorder(out); }
+    const parts = [];
+    rec.ondataavailable = e => { if (e.data && e.data.size) parts.push(e.data); };
+    const done = new Promise(r => { rec.onstop = r; });
+
+    let next = await createImageBitmap(pick[0]);
+    ctx.drawImage(next, 0, 0, canvas.width, canvas.height);
+    rec.start(1000);
+    const frameMs = 1000 / OUT_FPS;
+    let t0 = performance.now();
+    for (let i = 0; i < total; i++) {
+      const cur = next;
+      const nextP = i + 1 < pick.length ? createImageBitmap(pick[i + 1]) : null;
+      if (cur) { ctx.globalAlpha = 1; ctx.filter = 'none'; ctx.drawImage(cur, 0, 0, canvas.width, canvas.height); }
+      if (i % 10 === 0) $('buildFill').style.width = Math.round(i / total * 100) + '%';
+      await sleepUntil(t0 + (i + 1) * frameMs);
+      if (nextP) { next = await nextP; if (cur && cur.close) cur.close(); }
+      else next = null;
+    }
+    rec.stop();
+    await done;
+    $('buildFill').style.width = '100%';
+    $('buildBox').classList.remove('show');
+    $('preview').style.display = '';
+    $('saveBtn').disabled = false; $('discardBtn').disabled = false;
+
+    const blob = new Blob(parts, { type: rec.mimeType || parts[0]?.type || 'video/mp4' });
+    showResult(blob, 'trace-lens-timelapse');
+  }
 
   function startRec() {
     if (!window.MediaRecorder || !canvas.captureStream) {
@@ -546,35 +656,40 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
     recorder.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
     recorder.onstop = finishRec;
     recorder.start(1000);
-    recStart = Date.now();
-    $('recTime').textContent = '0:00';
-    recTimer = setInterval(() => { $('recTime').textContent = fmt((Date.now() - recStart) / 1000); }, 500);
-    $('recBtn').classList.add('on'); $('recLabel').textContent = 'Stop';
-    $('recBadge').classList.add('show');
+    startTimer(); setRecUI(true);
   }
   function stopRec() {
     if (recorder && recorder.state !== 'inactive') recorder.stop();
     clearInterval(recTimer); cancelAnimationFrame(rafId);
-    $('recBtn').classList.remove('on'); $('recLabel').textContent = 'Record';
-    $('recBadge').classList.remove('show');
+    setRecUI(false);
   }
   function finishRec() {
     const type = (recorder && recorder.mimeType) || chunks[0]?.type || 'video/mp4';
     const ext = type.includes('mp4') ? 'mp4' : 'webm';
     const blob = new Blob(chunks, { type });
     chunks = [];
+    $('saveTitle').textContent = 'Recording ready';
+    showResult(blob, 'trace-lens');
+  }
+  function showResult(blob, prefix) {
+    const type = blob.type || 'video/mp4';
+    const ext = type.includes('mp4') ? 'mp4' : 'webm';
     const d = new Date(), pad = n => String(n).padStart(2, '0');
-    const name = `trace-lens-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.${ext}`;
+    const name = `${prefix}-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.${ext}`;
     recFile = new File([blob], name, { type });
     const pv = $('preview');
     if (pv.src) URL.revokeObjectURL(pv.src);
     pv.src = URL.createObjectURL(blob);
     $('saveSheet').classList.add('show');
   }
-  $('recBtn').addEventListener('click', () => {
-    (recorder && recorder.state === 'recording') ? stopRec() : startRec();
-  });
-  $('recBadge').addEventListener('click', stopRec);
+  const isRecording = () => !!lapseTimer || (recorder && recorder.state === 'recording');
+  function toggleRec() {
+    if (lapseTimer) return stopLapse();
+    if (recorder && recorder.state === 'recording') return stopRec();
+    lapseMode ? startLapse() : startRec();
+  }
+  $('recBtn').addEventListener('click', toggleRec);
+  $('recBadge').addEventListener('click', () => { if (isRecording()) toggleRec(); });
 
   $('saveBtn').addEventListener('click', async () => {
     if (!recFile) return;

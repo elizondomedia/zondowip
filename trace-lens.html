@@ -16,21 +16,21 @@
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;600&display=swap" rel="stylesheet">
 <style>
 :root {
-  --vellum: rgba(246, 249, 250, 0.82);
+  --vellum: rgba(246, 249, 250, 0.84);
   --vellum-solid: #F2F6F7;
   --graphite: #2E3338;
   --graphite-soft: #5E666D;
-  --blue: #2F7FA3;          /* non-photo blue, deepened for contrast */
+  --blue: #2F7FA3;
   --blue-wash: #CFE8F1;
   --line: rgba(46, 51, 56, 0.14);
   --stage: #1E2124;
+  --rec: #D64545;
+  --warn: #C98A2B;
   box-sizing: border-box;
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --vellum: rgba(36, 41, 45, 0.82);
+    --vellum: rgba(36, 41, 45, 0.84);
     --vellum-solid: #24292D;
     --graphite: #E8EDEF;
     --graphite-soft: #A3ADB3;
@@ -40,7 +40,7 @@
   }
 }
 :root[data-theme="dark"] {
-  --vellum: rgba(36, 41, 45, 0.82);
+  --vellum: rgba(36, 41, 45, 0.84);
   --vellum-solid: #24292D;
   --graphite: #E8EDEF;
   --graphite-soft: #A3ADB3;
@@ -49,7 +49,7 @@
   --line: rgba(232, 237, 239, 0.16);
 }
 *, *::before, *::after { box-sizing: inherit; }
-html { height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); }
+html { height: 100%; }
 body {
   height: 100%; margin: 0; overflow: hidden;
   background: var(--stage); color: var(--graphite);
@@ -63,23 +63,39 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
 /* Stage */
 #stage { position: fixed; inset: 0; touch-action: none; overflow: hidden; background: var(--stage); }
 #video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-#video.mirror { transform: scaleX(-1); }
-#overlay {
-  position: absolute; left: 50%; top: 50%;
-  max-width: none; opacity: .5; pointer-events: none;
-  transform-origin: center center; will-change: transform;
-}
+#anchor { position: absolute; left: 0; top: 0; width: 100%; height: 100%; transform-origin: 0 0; pointer-events: none; will-change: transform; }
+#art { position: absolute; left: 50%; top: 50%; transform-origin: center center; will-change: transform; }
+#overlay { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .5; }
 #overlay.lines { filter: grayscale(1) contrast(1.8) brightness(1.05); }
+#gridCv { position: absolute; inset: 0; width: 100%; height: 100%; display: none; }
+#gridCv.show { display: block; }
 
-/* Lock badge */
+/* Status badges */
 #lockBadge {
   position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 12px);
   transform: translateX(-50%);
   background: var(--blue); color: #fff; border-radius: 999px;
-  padding: 6px 14px; font-size: 14px; font-weight: 600;
+  padding: 6px 14px; font-size: 14px; font-weight: 600; white-space: nowrap;
   display: none; align-items: center; gap: 6px; z-index: 5;
 }
 #lockBadge.show { display: flex; }
+#lockBadge.lost { background: var(--warn); }
+#recBadge {
+  position: fixed; left: 14px; top: calc(env(safe-area-inset-top, 0px) + 52px); z-index: 7;
+  display: none; align-items: center; gap: 8px; border: 0;
+  background: var(--rec); color: #fff; border-radius: 999px;
+  padding: 7px 14px 7px 12px; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+#recBadge.show { display: flex; }
+#recBadge .sq { width: 10px; height: 10px; border-radius: 2px; background: #fff; }
+#toast {
+  position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 52px); z-index: 11;
+  transform: translateX(-50%); width: min(92vw, 420px);
+  background: var(--vellum-solid); color: var(--graphite); border: 1px solid var(--line);
+  border-radius: 16px; padding: 12px 14px; font-size: 14.5px; line-height: 1.45;
+  display: none;
+}
+#toast.show { display: block; }
 
 /* Controls */
 #controls {
@@ -93,9 +109,9 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
   background: var(--vellum);
   -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2);
   border: 1px solid var(--line); border-radius: 22px;
-  padding: 14px 14px 10px;
+  padding: 12px 12px 8px;
 }
-.slider-row { display: flex; align-items: center; gap: 12px; padding: 0 4px 12px; }
+.slider-row { display: flex; align-items: center; gap: 12px; padding: 0 4px 10px; }
 .slider-row label { font-size: 15px; font-weight: 600; min-width: 64px; }
 .slider-row output { font-variant-numeric: tabular-nums; font-size: 15px; min-width: 42px; text-align: right; color: var(--graphite-soft); }
 input[type=range] { flex: 1; -webkit-appearance: none; appearance: none; height: 28px; background: transparent; }
@@ -105,10 +121,26 @@ input[type=range]::-moz-range-track { height: 4px; border-radius: 2px; backgroun
 input[type=range]::-moz-range-progress { height: 4px; background: var(--blue); }
 input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: var(--vellum-solid); border: 2px solid var(--blue); }
 
-.tools { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+.rec-row { display: flex; align-items: center; gap: 8px; padding: 0 0 10px; }
+#recBtn {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 10px;
+  border: 1.5px solid var(--rec); background: none; border-radius: 14px;
+  padding: 10px 12px; font-weight: 600; font-size: 15px; cursor: pointer;
+}
+#recBtn .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--rec); }
+#recBtn.on { background: var(--rec); color: #fff; }
+#recBtn.on .dot { border-radius: 3px; background: #fff; }
+.chip {
+  border: 1px solid var(--line); background: none; border-radius: 14px;
+  padding: 10px 10px; font-size: 13.5px; color: var(--graphite-soft); cursor: pointer; white-space: nowrap;
+}
+.chip:disabled { opacity: .45; }
+.chip[aria-pressed="true"] { background: var(--blue-wash); color: var(--graphite); border-color: transparent; }
+
+.tools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; }
 .tool {
-  background: none; border: 0; border-radius: 14px;
-  padding: 8px 2px 6px; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  position: relative; background: none; border: 0; border-radius: 14px;
+  padding: 7px 2px 5px; display: flex; flex-direction: column; align-items: center; gap: 3px;
   font-size: 11.5px; color: var(--graphite-soft); cursor: pointer;
 }
 .tool svg { width: 24px; height: 24px; stroke: var(--graphite); fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
@@ -129,6 +161,7 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
 #start {
   position: fixed; inset: 0; z-index: 10;
   display: flex; align-items: center; justify-content: center; padding: 24px;
+  overflow-y: auto;
   background:
     repeating-linear-gradient(0deg, transparent 0 23px, rgba(127,196,221,.10) 23px 24px),
     repeating-linear-gradient(90deg, transparent 0 23px, rgba(127,196,221,.10) 23px 24px),
@@ -137,14 +170,15 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
 #start.hide { display: none; }
 .sheet {
   width: 100%; max-width: 380px;
-  background: var(--vellum-solid); border-radius: 28px; padding: 28px 24px 22px;
+  background: var(--vellum-solid); border-radius: 28px; padding: 26px 22px 20px;
   border: 1px solid var(--line);
 }
 .sheet h1 {
   font-family: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
   font-weight: 700; font-size: 40px; line-height: 1; letter-spacing: -0.02em; margin: 0 0 10px;
 }
-.sheet p { margin: 0 0 22px; font-size: 16px; line-height: 1.45; color: var(--graphite-soft); }
+.sheet h2 { font-family: "Bricolage Grotesque", system-ui, sans-serif; font-size: 26px; margin: 0 0 12px; }
+.sheet p { margin: 0 0 20px; font-size: 16px; line-height: 1.45; color: var(--graphite-soft); }
 .pick {
   position: relative; display: flex; align-items: center; gap: 14px;
   border: 1.5px dashed var(--blue); border-radius: 18px; padding: 14px; margin-bottom: 14px; cursor: pointer;
@@ -159,13 +193,27 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
 .thumb.has svg { display: none; }
 .pick strong { display: block; font-size: 16px; }
 .pick span { font-size: 14px; color: var(--graphite-soft); }
+
+.recent { margin: 0 0 14px; }
+.recent[hidden] { display: none; }
+.recent-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+.recent-head span { font-size: 14px; font-weight: 600; }
+.linkbtn { border: 0; background: none; color: var(--blue); font-size: 14px; font-weight: 600; padding: 4px 0; cursor: pointer; }
+.recent-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+.recent-row button { flex: none; width: 56px; height: 56px; padding: 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: var(--blue-wash); cursor: pointer; }
+.recent-row img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
 .go {
   width: 100%; border: 0; border-radius: 16px; padding: 16px;
   background: var(--blue); color: #fff; font-weight: 600; font-size: 17px; cursor: pointer;
 }
 :root[data-theme="dark"] .go { color: #10262F; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .go { color: #10262F; } }
-.go:disabled { opacity: .4; }
+.go:disabled, .ghost:disabled { opacity: .4; }
+.ghost {
+  width: 100%; margin-top: 10px; border: 1px solid var(--line); background: none;
+  border-radius: 16px; padding: 14px; font-weight: 600; font-size: 16px; cursor: pointer;
+}
 .hint { margin-top: 16px; font-size: 13.5px; line-height: 1.5; color: var(--graphite-soft); }
 .err {
   display: none; margin-top: 14px; padding: 12px 14px; border-radius: 14px;
@@ -173,53 +221,40 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
 }
 .err.show { display: block; }
 
-/* Recording */
-:root { --rec: #D64545; }
-.rec-row { display: flex; align-items: center; gap: 10px; padding: 0 0 12px; }
-#recBtn {
-  flex: 1; display: flex; align-items: center; justify-content: center; gap: 10px;
-  border: 1.5px solid var(--rec); background: none; border-radius: 14px;
-  padding: 11px 12px; font-weight: 600; font-size: 15px; cursor: pointer;
-}
-#recBtn .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--rec); }
-#recBtn.on { background: var(--rec); color: #fff; }
-#recBtn.on .dot { border-radius: 3px; background: #fff; }
-.chip {
-  border: 1px solid var(--line); background: none; border-radius: 14px;
-  padding: 11px 10px; font-size: 13.5px; color: var(--graphite-soft); cursor: pointer; white-space: nowrap;
-}
-.chip:disabled { opacity: .45; }
-.chip[aria-pressed="true"] { background: var(--blue-wash); color: var(--graphite); border-color: transparent; }
-#recBadge {
-  position: fixed; left: 14px; top: calc(env(safe-area-inset-top, 0px) + 12px); z-index: 7;
-  display: none; align-items: center; gap: 8px; border: 0;
-  background: var(--rec); color: #fff; border-radius: 999px;
-  padding: 7px 14px 7px 12px; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums;
-}
-#recBadge.show { display: flex; }
-#recBadge .sq { width: 10px; height: 10px; border-radius: 2px; background: #fff; }
-#saveSheet {
+/* Modals */
+.modal {
   position: fixed; inset: 0; z-index: 12; display: none;
   align-items: center; justify-content: center; padding: 20px;
   background: rgba(15, 17, 19, 0.72);
 }
-#saveSheet.show { display: flex; }
-#saveSheet h2 { font-family: "Bricolage Grotesque", system-ui, sans-serif; font-size: 26px; margin: 0 0 12px; }
+.modal.show { display: flex; }
+.modal .sheet { max-height: 86vh; overflow-y: auto; }
 #preview { width: 100%; max-height: 46vh; border-radius: 14px; background: #000; display: block; margin-bottom: 14px; }
-.ghost {
-  width: 100%; margin-top: 10px; border: 1px solid var(--line); background: none;
-  border-radius: 16px; padding: 14px; font-weight: 600; font-size: 16px; cursor: pointer;
-}
 #buildBox { display: none; margin-bottom: 14px; }
 #buildBox.show { display: block; }
 #buildBox p { margin: 0 0 8px; font-size: 15px; }
 .bar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
 #buildFill { height: 100%; width: 0; background: var(--blue); }
-.go:disabled, .ghost:disabled { opacity: .4; }
 .small { font-size: 13.5px; line-height: 1.45; color: var(--graphite-soft); margin: 12px 0 0; }
 
+.libgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.lib-item { position: relative; aspect-ratio: 1; }
+.lib-item .pickbtn { width: 100%; height: 100%; padding: 0; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--blue-wash); cursor: pointer; }
+.lib-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.lib-item .del {
+  position: absolute; top: -6px; right: -6px; width: 26px; height: 26px; border-radius: 50%;
+  border: 1px solid var(--line); background: var(--vellum-solid); font-size: 16px; line-height: 1; cursor: pointer;
+}
+.add-tile {
+  position: relative; aspect-ratio: 1; border: 1.5px dashed var(--blue); border-radius: 14px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  color: var(--blue); font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.add-tile b { font-size: 26px; font-weight: 500; line-height: 1; }
+.add-tile input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.empty { grid-column: 1 / -1; font-size: 14px; color: var(--graphite-soft); margin: 4px 0; }
+
 @media (prefers-reduced-motion: no-preference) {
-  .panel { transition: opacity .2s; }
   #recBadge .sq { animation: blink 1.2s steps(2) infinite; }
   @keyframes blink { 50% { opacity: .35; } }
 }
@@ -229,13 +264,16 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
 
 <div id="stage">
   <video id="video" playsinline muted autoplay></video>
-  <img id="overlay" alt="">
+  <div id="anchor">
+    <div id="art">
+      <img id="overlay" alt="">
+      <canvas id="gridCv"></canvas>
+    </div>
+  </div>
 </div>
 
-<div id="lockBadge" role="status">
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
-  Image locked
-</div>
+<div id="lockBadge" role="status"><span id="lockText">Image locked</span></div>
+<div id="toast" role="alert"></div>
 
 <div id="controls">
   <div class="panel">
@@ -250,8 +288,14 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
       <button class="chip" id="lapseBtn" aria-pressed="false">Timelapse</button>
     </div>
     <div class="tools">
+      <button class="tool" id="pinBtn" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><path d="M9 3h6"/><path d="M10 3v6l-3 4h10l-3-4V3"/><path d="M12 13v8"/></svg>Pin
+      </button>
       <button class="tool" id="lockBtn" aria-pressed="false">
         <svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0"/></svg>Lock
+      </button>
+      <button class="tool" id="gridBtn" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg><span id="gridLabel">Grid</span>
       </button>
       <button class="tool" id="linesBtn" aria-pressed="false">
         <svg viewBox="0 0 24 24"><path d="M4 20c4-1 6-6 8-10s4-6 8-6"/><path d="M4 14c2 0 3-2 4-4"/></svg>Lines
@@ -262,10 +306,9 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
       <button class="tool" id="resetBtn">
         <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>Re-center
       </button>
-      <label class="tool" id="swapLabel" style="position:relative">
-        <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-8 8"/></svg>New image
-        <input id="swapInput" type="file" accept="image/*" style="position:absolute;inset:0;opacity:0">
-      </label>
+      <button class="tool" id="libBtn">
+        <svg viewBox="0 0 24 24"><rect x="7" y="7" width="14" height="13" rx="2"/><path d="M4 16V6a2 2 0 0 1 2-2h10"/><circle cx="12" cy="11.5" r="1.4"/><path d="m21 17-4-4-6 6"/></svg>Images
+      </button>
       <button class="tool" id="hideBtn">
         <svg viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M10.6 6.1A10 10 0 0 1 12 6c6 0 9.5 6 9.5 6a17 17 0 0 1-3 3.6"/><path d="M6.4 7.4C3.9 9.1 2.5 12 2.5 12s3.5 6 9.5 6a9.6 9.6 0 0 0 4.2-1"/></svg>Hide
       </button>
@@ -273,13 +316,17 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
   </div>
 </div>
 
+<button id="showBtn" aria-label="Show controls">
+  <svg viewBox="0 0 24 24"><path d="M2.5 12S6 6 12 6s9.5 6 9.5 6-3.5 6-9.5 6S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg>
+</button>
+
 <button id="recBadge" aria-label="Stop recording"><span class="sq"></span><span id="recTime">0:00</span></button>
 
-<div id="saveSheet" role="dialog" aria-modal="true" aria-labelledby="saveTitle">
+<div id="saveSheet" class="modal" role="dialog" aria-modal="true" aria-labelledby="saveTitle">
   <div class="sheet">
     <h2 id="saveTitle">Recording ready</h2>
     <div id="buildBox" role="status">
-      <p id="buildText">Building timelapse… keep the app open.</p>
+      <p>Building timelapse… keep the app open.</p>
       <div class="bar"><div id="buildFill"></div></div>
     </div>
     <video id="preview" playsinline controls muted></video>
@@ -289,9 +336,14 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
   </div>
 </div>
 
-<button id="showBtn" aria-label="Show controls">
-  <svg viewBox="0 0 24 24"><path d="M2.5 12S6 6 12 6s9.5 6 9.5 6-3.5 6-9.5 6S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg>
-</button>
+<div id="libSheet" class="modal" role="dialog" aria-modal="true" aria-labelledby="libTitle">
+  <div class="sheet">
+    <h2 id="libTitle">Your images</h2>
+    <div class="libgrid" id="libGrid"></div>
+    <button class="ghost" id="libClose">Close</button>
+    <p class="small">Images are saved on this phone only. Tap × to remove one.</p>
+  </div>
+</div>
 
 <div id="start">
   <div class="sheet">
@@ -307,93 +359,374 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
       </div>
       <input id="fileInput" type="file" accept="image/*">
     </label>
+    <div class="recent" id="recentWrap" hidden>
+      <div class="recent-head"><span>Recent</span><button class="linkbtn" id="seeAll">See all</button></div>
+      <div class="recent-row" id="recentRow"></div>
+    </div>
     <button class="go" id="goBtn" disabled>Start camera</button>
     <div class="err" id="err" role="alert"></div>
-    <p class="hint">Prop your phone 8–12 inches above the paper. Drag to move the image, pinch to resize and twist to rotate, then tap Lock before you start drawing.</p>
+    <p class="hint">Prop your phone 8–12 inches above the paper. Position the image with drag, pinch and twist, then tap <strong>Pin</strong> so it stays on the paper even if the phone gets bumped.</p>
   </div>
 </div>
 
 <script>
+/* ===== Tracker: keeps the overlay fixed to the scene (pure, no DOM) ===== */
+const Tracker = (() => {
+  const H = 7, P = 15, N = P * P;
+  let patches = [];
+  let cur = { s: 1, th: 0, tx: 0, ty: 0 };
+  let lostFrames = 0;
+
+  function apply(T, x, y) {
+    const c = Math.cos(T.th) * T.s, s = Math.sin(T.th) * T.s;
+    return [c * x - s * y + T.tx, s * x + c * y + T.ty];
+  }
+  function fit(pairs) {
+    let px = 0, py = 0, qx = 0, qy = 0;
+    for (const m of pairs) { px += m.p[0]; py += m.p[1]; qx += m.q[0]; qy += m.q[1]; }
+    const n = pairs.length; px /= n; py /= n; qx /= n; qy /= n;
+    let a = 0, b = 0, d = 0;
+    for (const m of pairs) {
+      const ux = m.p[0] - px, uy = m.p[1] - py, vx = m.q[0] - qx, vy = m.q[1] - qy;
+      a += ux * vx + uy * vy; b += ux * vy - uy * vx; d += ux * ux + uy * uy;
+    }
+    if (d < 1e-6) return null;
+    const sc = a / d, ss = b / d;
+    const s = Math.hypot(sc, ss), th = Math.atan2(ss, sc);
+    return { s, th, tx: qx - (sc * px - ss * py), ty: qy - (ss * px + sc * py) };
+  }
+  function integral(g, w, h) {
+    const I = new Uint32Array((w + 1) * (h + 1));
+    for (let y = 0; y < h; y++) {
+      let row = 0;
+      for (let x = 0; x < w; x++) {
+        row += g[y * w + x];
+        I[(y + 1) * (w + 1) + x + 1] = I[y * (w + 1) + x + 1] + row;
+      }
+    }
+    return I;
+  }
+  function init(f) {
+    const { g, w, h } = f;
+    const m = H + 4, cands = [];
+    for (let y = m; y < h - m; y += 5) {
+      for (let x = m; x < w - m; x += 5) {
+        let xx = 0, yy = 0, xy = 0;
+        for (let j = -H; j <= H; j++) {
+          const r = (y + j) * w;
+          for (let i = -H; i <= H; i++) {
+            const k = r + x + i;
+            const dx = g[k + 1] - g[k - 1], dy = g[k + w] - g[k - w];
+            xx += dx * dx; yy += dy * dy; xy += dx * dy;
+          }
+        }
+        const tr = (xx + yy) / 2, det = Math.sqrt(((xx - yy) / 2) ** 2 + xy * xy);
+        cands.push({ x, y, score: tr - det });
+      }
+    }
+    cands.sort((a, b) => b.score - a.score);
+    const best = cands.length ? cands[0].score : 0;
+    const minScore = Math.max(6000, best * 0.03), spacing = 16;
+    patches = [];
+    for (const c of cands) {
+      if (c.score < minScore || patches.length >= 48) break;
+      if (patches.some(p => Math.abs(p.x - c.x) < spacing && Math.abs(p.y - c.y) < spacing)) continue;
+      let mean = 0;
+      for (let j = -H; j <= H; j++) for (let i = -H; i <= H; i++) mean += g[(c.y + j) * w + c.x + i];
+      mean /= N;
+      const data = new Float32Array(N);
+      let k = 0;
+      for (let j = -H; j <= H; j++) for (let i = -H; i <= H; i++) data[k++] = g[(c.y + j) * w + c.x + i] - mean;
+      patches.push({ x: c.x, y: c.y, data });
+    }
+    cur = { s: 1, th: 0, tx: 0, ty: 0 };
+    lostFrames = 0;
+    return patches.length;
+  }
+  function match(p, g, w, h, I, cx, cy, R, step) {
+    let bx = -1, by = -1, best = Infinity;
+    const W1 = w + 1;
+    for (let dy = -R; dy <= R; dy += step) {
+      const y0 = cy + dy - H;
+      if (y0 < 0 || y0 + P > h) continue;
+      for (let dx = -R; dx <= R; dx += step) {
+        const x0 = cx + dx - H;
+        if (x0 < 0 || x0 + P > w) continue;
+        const sum = I[(y0 + P) * W1 + x0 + P] - I[y0 * W1 + x0 + P] - I[(y0 + P) * W1 + x0] + I[y0 * W1 + x0];
+        const mean = sum / N;
+        let cost = 0, k = 0;
+        for (let j = 0; j < P && cost < best; j++) {
+          const r = (y0 + j) * w + x0;
+          for (let i = 0; i < P; i++) cost += Math.abs(g[r + i] - mean - p.data[k++]);
+        }
+        if (cost < best) { best = cost; bx = cx + dx; by = cy + dy; }
+      }
+    }
+    return bx < 0 ? null : { x: bx, y: by, cost: best / N };
+  }
+  function track(f) {
+    const { g, w, h } = f;
+    if (!patches.length) return { ok: false };
+    const I = integral(g, w, h);
+    const lost = lostFrames > 0;
+    const pairs = [];
+    for (const p of patches) {
+      const [px, py] = apply(cur, p.x, p.y);
+      let r = match(p, g, w, h, I, Math.round(px), Math.round(py), lost ? 34 : 9, lost ? 2 : 1);
+      if (r && lost) r = match(p, g, w, h, I, r.x, r.y, 2, 1) || r;
+      if (r && r.cost < 14) pairs.push({ p: [p.x, p.y], q: [r.x, r.y] });
+    }
+    if (pairs.length < 5) { lostFrames++; return { ok: false }; }
+    let bestIn = null;
+    for (let it = 0; it < 80; it++) {
+      const a = pairs[(Math.random() * pairs.length) | 0], b = pairs[(Math.random() * pairs.length) | 0];
+      if (a === b) continue;
+      const T = fit([a, b]);
+      if (!T || T.s < 0.6 || T.s > 1.6) continue;
+      const inl = pairs.filter(m => { const [x, y] = apply(T, m.p[0], m.p[1]); return Math.hypot(x - m.q[0], y - m.q[1]) < 2.2; });
+      if (!bestIn || inl.length > bestIn.length) bestIn = inl;
+    }
+    if (!bestIn || bestIn.length < Math.max(6, pairs.length * 0.4, patches.length * 0.25)) { lostFrames++; return { ok: false }; }
+    const T = fit(bestIn);
+    if (!T || T.s < 0.6 || T.s > 1.6) { lostFrames++; return { ok: false }; }
+    cur = T; lostFrames = 0;
+    return { ok: true, T, inliers: bestIn.length, total: patches.length };
+  }
+  return { init, track, apply, fit, count: () => patches.length };
+})();
+
+/* ===== App ===== */
 (() => {
   const $ = id => document.getElementById(id);
-  const video = $('video'), overlay = $('overlay'), stage = $('stage');
-  const state = { tx: 0, ty: 0, scale: 1, rot: 0, flip: false, locked: false };
-  let imgURL = null, stream = null, wakeLock = null;
+  const video = $('video'), overlay = $('overlay'), art = $('art'), anchorEl = $('anchor'), gridCv = $('gridCv'), stage = $('stage');
+  const state = { tx: 0, ty: 0, scale: 1, rot: 0, flip: false, locked: false, pinned: false, grid: 0 };
+  const anchor = { s: 1, th: 0, E: 0, F: 0 };
+  const GRID_MODES = [0, 'thirds', 4, 6, 8];
+  let stream = null, wakeLock = null, artW = 0, artH = 0;
+
+  function toggle(btn, on) { btn.setAttribute('aria-pressed', on ? 'true' : 'false'); }
+  let toastTimer = null;
+  function toast(msg, ms = 4500) {
+    const t = $('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), ms);
+  }
+  function showErr(msg) { const err = $('err'); err.textContent = msg; err.classList.add('show'); }
+  const anchorMatrix = () => {
+    const c = Math.cos(anchor.th) * anchor.s, s = Math.sin(anchor.th) * anchor.s;
+    return [c, s, -s, c, anchor.E, anchor.F];
+  };
+
+  // ---------- Rendering ----------
+  function render() {
+    art.style.transform =
+      `translate(-50%,-50%) translate(${state.tx}px,${state.ty}px) rotate(${state.rot}rad) scale(${state.scale}) scaleX(${state.flip ? -1 : 1})`;
+    anchorEl.style.transform = `matrix(${anchorMatrix().join(',')})`;
+  }
+  function gridLines(w, h, mode) {
+    let cols, rows;
+    if (mode === 'thirds') { cols = 3; rows = 3; }
+    else {
+      const cell = Math.min(w, h) / mode;
+      cols = Math.max(1, Math.round(w / cell)); rows = Math.max(1, Math.round(h / cell));
+    }
+    const xs = [], ys = [];
+    for (let i = 0; i <= cols; i++) xs.push(w * i / cols);
+    for (let j = 0; j <= rows; j++) ys.push(h * j / rows);
+    return { xs, ys };
+  }
+  function drawGridOn(ctx, w, h, mode, u) {
+    const { xs, ys } = gridLines(w, h, mode);
+    ctx.beginPath();
+    for (const x of xs) { ctx.moveTo(x, 0); ctx.lineTo(x, h); }
+    for (const y of ys) { ctx.moveTo(0, y); ctx.lineTo(w, y); }
+    ctx.lineCap = 'butt';
+    ctx.strokeStyle = 'rgba(16,20,24,.55)'; ctx.lineWidth = 3.2 * u; ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.lineWidth = 1.3 * u; ctx.stroke();
+  }
+  function drawGridLayer() {
+    const mode = GRID_MODES[state.grid];
+    gridCv.classList.toggle('show', !!mode && !!artW);
+    if (!mode || !artW) return;
+    const dpr = Math.min(3, window.devicePixelRatio || 1);
+    const total = Math.max(0.2, state.scale * anchor.s);
+    const q = Math.min(2.5, Math.max(1, total)) * dpr;
+    gridCv.width = Math.round(artW * q); gridCv.height = Math.round(artH * q);
+    const g = gridCv.getContext('2d');
+    g.setTransform(q, 0, 0, q, 0, 0);
+    g.clearRect(0, 0, artW, artH);
+    drawGridOn(g, artW, artH, mode, 1 / total);
+  }
 
   // ---------- Image loading ----------
-  function loadFile(file, onReady) {
-    $('err').classList.remove('show');
-    if (!file) {
-      showErr('No photo came through. If you’re in the Claude app’s preview, open this page in Safari and choose the photo there.');
-      return;
+  const readAsDataURL = f => new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(f);
+  });
+  const showSrc = src => new Promise((res, rej) => {
+    overlay.onload = () => res(); overlay.onerror = () => rej(); overlay.src = src;
+  });
+  async function displayBlob(blob) {
+    const data = await readAsDataURL(blob);
+    try { await showSrc(data); return; }
+    catch (_) {
+      const bmp = await createImageBitmap(blob);
+      const max = 3000, k = Math.min(1, max / Math.max(bmp.width, bmp.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+      c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+      await showSrc(c.toDataURL('image/jpeg', 0.9));
     }
-    // iOS sometimes reports an empty type for photos; only reject clear non-images
-    if (file.type && !file.type.startsWith('image/')) {
-      showErr('That file isn’t an image. Choose a JPG, PNG, or HEIC photo.');
-      return;
-    }
-    const fail = () => showErr('This photo couldn’t be opened here. Open Trace Lens in Safari from your own site, or try a screenshot of the photo.');
-    const readAsDataURL = f => new Promise((res, rej) => {
-      const r = new FileReader();
-      r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(f);
-    });
-    const show = src => new Promise((res, rej) => {
-      overlay.onload = () => res(); overlay.onerror = () => rej(); overlay.src = src;
-    });
-    (async () => {
-      try {
-        const data = await readAsDataURL(file);
-        try { await show(data); }
-        catch (_) {
-          // Re-encode formats the viewer can't display (e.g. HEIC)
-          const bmp = await createImageBitmap(file);
-          const max = 3000, k = Math.min(1, max / Math.max(bmp.width, bmp.height));
-          const c = document.createElement('canvas');
-          c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
-          c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
-          await show(c.toDataURL('image/jpeg', 0.9));
-        }
-        imgURL = overlay.src;
-        fitImage(); onReady && onReady();
-      } catch (_) { fail(); }
-    })();
   }
   function fitImage() {
     const w = overlay.naturalWidth, h = overlay.naturalHeight;
     if (!w || !h) return;
     const vw = window.innerWidth, vh = window.innerHeight;
     const base = Math.min(vw * 0.86 / w, vh * 0.62 / h);
-    overlay.style.width = (w * base) + 'px';
-    overlay.style.height = (h * base) + 'px';
+    artW = w * base; artH = h * base;
+    art.style.width = artW + 'px'; art.style.height = artH + 'px';
     state.tx = 0; state.ty = -vh * 0.04; state.scale = 1; state.rot = 0;
-    render();
+    render(); drawGridLayer();
   }
-  function render() {
-    overlay.style.transform =
-      `translate(-50%,-50%) translate(${state.tx}px,${state.ty}px) rotate(${state.rot}rad) scale(${state.scale}) scaleX(${state.flip ? -1 : 1})`;
+  function afterImageLoaded() {
+    if (state.pinned) stopPin(false);
+    fitImage();
   }
+  function markReady() {
+    $('thumb').style.backgroundImage = `url("${overlay.src}")`;
+    $('thumb').classList.add('has');
+    $('pickTitle').textContent = 'Image ready';
+    $('pickSub').textContent = 'Tap to choose a different one';
+    $('goBtn').disabled = false;
+  }
+  async function loadFile(file) {
+    $('err').classList.remove('show');
+    if (!file) { showErr('No photo came through. Open Trace Lens in Safari and choose the photo there.'); return false; }
+    if (file.type && !file.type.startsWith('image/')) { showErr('That file isn’t an image. Choose a JPG, PNG, or HEIC photo.'); return false; }
+    try { await displayBlob(file); }
+    catch (_) {
+      const msg = 'This photo couldn’t be opened. Try a screenshot of it instead.';
+      showErr(msg); toast(msg); return false;
+    }
+    afterImageLoaded(); markReady();
+    Lib.saveCurrent(file).catch(() => {});
+    return true;
+  }
+
+  // ---------- Library (IndexedDB, on this device only) ----------
+  const Lib = (() => {
+    let dbp = null;
+    function db() {
+      if (!dbp) dbp = new Promise((res, rej) => {
+        if (!window.indexedDB) return rej(new Error('no idb'));
+        const r = indexedDB.open('trace-lens', 1);
+        r.onupgradeneeded = () => r.result.createObjectStore('images', { keyPath: 'id', autoIncrement: true });
+        r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+      });
+      return dbp;
+    }
+    async function tx(mode, fn) {
+      const d = await db();
+      return new Promise((res, rej) => {
+        const t = d.transaction('images', mode), st = t.objectStore('images');
+        const out = fn(st);
+        t.oncomplete = () => res(out && out.result !== undefined ? out.result : out);
+        t.onerror = () => rej(t.error);
+      });
+    }
+    const all = async () => {
+      const list = await tx('readonly', st => st.getAll());
+      return (list || []).sort((a, b) => b.used - a.used);
+    };
+    const put = rec => tx('readwrite', st => st.put(rec));
+    const del = id => tx('readwrite', st => st.delete(id));
+    function canvasBlob(c, type, q) { return new Promise(r => c.toBlob(r, type, q)); }
+    async function saveCurrent(file) {
+      const sig = `${file.name}|${file.size}|${file.lastModified}`;
+      const list = await all();
+      const hit = list.find(r => r.sig === sig);
+      if (hit) { hit.used = Date.now(); await put(hit); refreshLibUI(); return; }
+      const w = overlay.naturalWidth, h = overlay.naturalHeight;
+      const k = Math.min(1, 2400 / Math.max(w, h));
+      const c = document.createElement('canvas');
+      c.width = Math.round(w * k); c.height = Math.round(h * k);
+      c.getContext('2d').drawImage(overlay, 0, 0, c.width, c.height);
+      const keepAlpha = /png|webp|gif/.test(file.type || '');
+      const blob = await canvasBlob(c, keepAlpha ? 'image/png' : 'image/jpeg', 0.9);
+      const t = document.createElement('canvas');
+      const tk = 180 / Math.min(w, h);
+      t.width = Math.max(1, Math.round(w * tk)); t.height = Math.max(1, Math.round(h * tk));
+      const tc = t.getContext('2d'); tc.fillStyle = '#fff'; tc.fillRect(0, 0, t.width, t.height);
+      tc.drawImage(overlay, 0, 0, t.width, t.height);
+      await put({ sig, name: file.name || 'Image', blob, thumb: t.toDataURL('image/jpeg', 0.8), used: Date.now() });
+      if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+      refreshLibUI();
+    }
+    return { all, put, del, saveCurrent };
+  })();
+
+  async function useLibItem(rec) {
+    try { await displayBlob(rec.blob); }
+    catch (_) { toast('That image couldn’t be opened.'); return; }
+    rec.used = Date.now(); Lib.put(rec).then(refreshLibUI).catch(() => {});
+    afterImageLoaded(); markReady();
+    $('libSheet').classList.remove('show');
+  }
+  async function refreshLibUI() {
+    let list = [];
+    try { list = await Lib.all(); } catch (_) {}
+    const row = $('recentRow'); row.textContent = '';
+    list.slice(0, 8).forEach(rec => {
+      const b = document.createElement('button');
+      b.setAttribute('aria-label', 'Use ' + rec.name);
+      const im = document.createElement('img'); im.src = rec.thumb; im.alt = '';
+      b.appendChild(im); b.addEventListener('click', () => useLibItem(rec));
+      row.appendChild(b);
+    });
+    $('recentWrap').hidden = !list.length;
+
+    const grid = $('libGrid'); grid.textContent = '';
+    const add = document.createElement('label'); add.className = 'add-tile';
+    add.innerHTML = '<b>+</b>Add image<input type="file" accept="image/*">';
+    add.querySelector('input').addEventListener('change', async e => {
+      const f = e.target.files && e.target.files[0]; e.target.value = '';
+      if (await loadFile(f)) $('libSheet').classList.remove('show');
+    });
+    grid.appendChild(add);
+    if (!list.length) {
+      const p = document.createElement('p'); p.className = 'empty';
+      p.textContent = 'Images you trace are saved here automatically.';
+      grid.appendChild(p);
+    }
+    list.forEach(rec => {
+      const item = document.createElement('div'); item.className = 'lib-item';
+      const b = document.createElement('button'); b.className = 'pickbtn'; b.setAttribute('aria-label', 'Use ' + rec.name);
+      const im = document.createElement('img'); im.src = rec.thumb; im.alt = '';
+      b.appendChild(im); b.addEventListener('click', () => useLibItem(rec));
+      const d = document.createElement('button'); d.className = 'del'; d.textContent = '×'; d.setAttribute('aria-label', 'Remove ' + rec.name);
+      d.addEventListener('click', async () => {
+        if (!confirm('Remove this image from your library?')) return;
+        await Lib.del(rec.id).catch(() => {}); refreshLibUI();
+      });
+      item.appendChild(b); item.appendChild(d); grid.appendChild(item);
+    });
+  }
+  $('seeAll').addEventListener('click', () => $('libSheet').classList.add('show'));
+  $('libBtn').addEventListener('click', () => $('libSheet').classList.add('show'));
+  $('libClose').addEventListener('click', () => $('libSheet').classList.remove('show'));
+  refreshLibUI();
 
   let lastPicked = null;
   const onPick = e => {
     const f = e.target.files && e.target.files[0];
     if (f && f === lastPicked) return;
-    lastPicked = f;
-    loadFile(f, () => {
-      $('thumb').style.backgroundImage = `url("${imgURL}")`;
-      $('thumb').classList.add('has');
-      $('pickTitle').textContent = 'Image ready';
-      $('pickSub').textContent = 'Tap to choose a different one';
-      $('goBtn').disabled = false;
-    });
+    lastPicked = f; loadFile(f);
   };
   $('fileInput').addEventListener('change', onPick);
   $('fileInput').addEventListener('input', onPick);
-  $('swapInput').addEventListener('change', e => { loadFile(e.target.files[0]); e.target.value = ''; });
 
   // ---------- Camera ----------
   async function startCamera() {
-    const err = $('err');
-    err.classList.remove('show');
+    $('err').classList.remove('show');
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       showErr('This browser view can’t reach the camera. Open this page’s link directly in Safari, then try again.');
       return;
@@ -411,15 +744,13 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
       requestWake();
     } catch (e) {
       if (e && e.name === 'NotAllowedError') {
-        showErr('Camera access was blocked. In Safari, tap the “aA” button in the address bar, choose Website Settings, set Camera to Allow, then tap Start camera again. If you opened this inside the Claude app, open the link in Safari instead.');
+        showErr('Camera access was blocked. In Safari, tap the “aA” button in the address bar, choose Website Settings, set Camera to Allow, then tap Start camera again.');
       } else {
-        showErr('The camera didn’t start (' + (e && e.name || 'unknown error') + '). Close other apps using the camera and try again, or open this link in Safari.');
+        showErr('The camera didn’t start (' + (e && e.name || 'unknown error') + '). Close other apps using the camera and try again.');
       }
     }
   }
-  function showErr(msg) { const err = $('err'); err.textContent = msg; err.classList.add('show'); }
   $('goBtn').addEventListener('click', startCamera);
-
   async function requestWake() {
     try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (_) {}
   }
@@ -427,23 +758,111 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
     if (document.visibilityState === 'visible' && stream) requestWake();
   });
 
+  // ---------- Pin to paper ----------
+  const proc = document.createElement('canvas');
+  const pctx = proc.getContext('2d', { willReadFrequently: true });
+  const PW = 240;
+  let mapA = 1, mapB = [0, 0];
+  function grabGray() {
+    const vW = video.videoWidth, vH = video.videoHeight;
+    if (!vW || !vH) return null;
+    const ph = Math.round(PW * vH / vW);
+    if (proc.width !== PW || proc.height !== ph) { proc.width = PW; proc.height = ph; }
+    pctx.drawImage(video, 0, 0, PW, ph);
+    const d = pctx.getImageData(0, 0, PW, ph).data;
+    const g = new Uint8Array(PW * ph);
+    for (let i = 0, j = 0; j < g.length; i += 4, j++) g[j] = (d[i] * 77 + d[i + 1] * 150 + d[i + 2] * 29) >> 8;
+    // proc → screen mapping (video is shown with object-fit: cover)
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const c = Math.max(vw / vW, vh / vH);
+    mapA = c * vW / PW;
+    mapB = [(vw - vW * c) / 2, (vh - vH * c) / 2];
+    return { g, w: PW, h: ph };
+  }
+  function setPinStatus(kind) {
+    const b = $('lockBadge');
+    b.classList.toggle('lost', kind === 'lost');
+    if (kind === 'pinned') $('lockText').textContent = 'Pinned to paper';
+    else if (kind === 'lost') $('lockText').textContent = 'Finding paper… hold steady';
+    else $('lockText').textContent = 'Image locked';
+    b.classList.toggle('show', kind !== 'none');
+  }
+  function updateBadge() {
+    if (state.pinned) return;
+    setPinStatus(state.locked ? 'locked' : 'none');
+  }
+  let pinRaf = null, lostSince = 0;
+  function startPin() {
+    const f = grabGray();
+    if (!f) { toast('Start the camera first.'); return; }
+    const n = Tracker.init(f);
+    if (n < 8) {
+      toast('Not enough detail to pin to. Make sure the paper’s corners are in view, set it on a patterned or darker surface, or draw small X marks near the corners.', 7000);
+      return;
+    }
+    state.pinned = true; toggle($('pinBtn'), true);
+    pts.clear(); g0 = null;
+    setPinStatus('pinned');
+    pinLoop();
+  }
+  function pinLoop() {
+    if (!state.pinned) return;
+    const f = grabGray();
+    if (f) {
+      const r = Tracker.track(f);
+      if (r.ok) {
+        lostSince = 0;
+        const T = r.T, a = mapA, [bx, by] = mapB;
+        const c = Math.cos(T.th) * T.s, s = Math.sin(T.th) * T.s;
+        const E = a * T.tx + bx - (c * bx - s * by);
+        const F = a * T.ty + by - (s * bx + c * by);
+        const big = Math.hypot(E - anchor.E, F - anchor.F) > 25;
+        const k = big ? 0.85 : 0.5;
+        anchor.s += (T.s - anchor.s) * k;
+        anchor.th += (T.th - anchor.th) * k;
+        anchor.E += (E - anchor.E) * k;
+        anchor.F += (F - anchor.F) * k;
+        render();
+        setPinStatus('pinned');
+      } else {
+        if (!lostSince) lostSince = performance.now();
+        if (performance.now() - lostSince > 400) setPinStatus('lost');
+      }
+    }
+    pinRaf = video.requestVideoFrameCallback ? video.requestVideoFrameCallback(pinLoop) : requestAnimationFrame(pinLoop);
+  }
+  function stopPin(bake = true) {
+    state.pinned = false; toggle($('pinBtn'), false);
+    if (pinRaf) { if (video.cancelVideoFrameCallback) try { video.cancelVideoFrameCallback(pinRaf); } catch (_) {} cancelAnimationFrame(pinRaf); }
+    pinRaf = null;
+    if (bake) {
+      // Keep the image where it currently appears
+      const [A, B, C, D, E, F] = anchorMatrix();
+      const cx = window.innerWidth / 2 + state.tx, cy = window.innerHeight / 2 + state.ty;
+      state.tx = A * cx + C * cy + E - window.innerWidth / 2;
+      state.ty = B * cx + D * cy + F - window.innerHeight / 2;
+      state.rot += anchor.th; state.scale *= anchor.s;
+    }
+    anchor.s = 1; anchor.th = 0; anchor.E = 0; anchor.F = 0;
+    render(); drawGridLayer(); updateBadge();
+  }
+  $('pinBtn').addEventListener('click', () => state.pinned ? stopPin(true) : startPin());
+
   // ---------- Gestures ----------
   const pts = new Map();
   let g0 = null;
-  function snapshot() {
-    const arr = [...pts.values()];
-    if (!arr.length) { g0 = null; return; }
-    const c = centroid(arr);
-    g0 = { c, tx: state.tx, ty: state.ty, scale: state.scale, rot: state.rot,
-           d: arr.length > 1 ? dist(arr[0], arr[1]) : 0,
-           a: arr.length > 1 ? angle(arr[0], arr[1]) : 0, n: arr.length };
-  }
   const centroid = a => ({ x: a.reduce((s, p) => s + p.x, 0) / a.length, y: a.reduce((s, p) => s + p.y, 0) / a.length });
   const dist = (p, q) => Math.hypot(q.x - p.x, q.y - p.y);
   const angle = (p, q) => Math.atan2(q.y - p.y, q.x - p.x);
-
+  function snapshot() {
+    const arr = [...pts.values()];
+    if (!arr.length) { g0 = null; drawGridLayer(); return; }
+    g0 = { c: centroid(arr), tx: state.tx, ty: state.ty, scale: state.scale, rot: state.rot,
+           d: arr.length > 1 ? dist(arr[0], arr[1]) : 0,
+           a: arr.length > 1 ? angle(arr[0], arr[1]) : 0, n: arr.length };
+  }
   stage.addEventListener('pointerdown', e => {
-    if (state.locked || !overlay.src) return;
+    if (state.locked || state.pinned || !overlay.src) return;
     stage.setPointerCapture(e.pointerId);
     pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
     snapshot();
@@ -464,26 +883,31 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
   const end = e => { if (pts.delete(e.pointerId)) snapshot(); };
   stage.addEventListener('pointerup', end);
   stage.addEventListener('pointercancel', end);
-  // Block iOS page zoom/scroll gestures
   ['gesturestart', 'gesturechange', 'touchmove'].forEach(t =>
-    document.addEventListener(t, e => { if (e.target.closest && !e.target.closest('input[type=range], #saveSheet')) e.preventDefault(); }, { passive: false }));
+    document.addEventListener(t, e => {
+      if (e.target.closest && !e.target.closest('input[type=range], .modal, #start, .recent-row')) e.preventDefault();
+    }, { passive: false }));
 
   // ---------- Controls ----------
   const op = $('opacity');
   function setOpacity() {
     overlay.style.opacity = op.value / 100;
     $('opacityOut').textContent = op.value + '%';
-    const pct = (op.value - op.min) / (op.max - op.min) * 100;
-    op.style.setProperty('--fill', pct + '%');
+    op.style.setProperty('--fill', ((op.value - op.min) / (op.max - op.min) * 100) + '%');
   }
   op.addEventListener('input', setOpacity); setOpacity();
 
-  function toggle(btn, on) { btn.setAttribute('aria-pressed', on ? 'true' : 'false'); }
   $('lockBtn').addEventListener('click', () => {
     state.locked = !state.locked;
     toggle($('lockBtn'), state.locked);
-    $('lockBadge').classList.toggle('show', state.locked);
-    pts.clear(); g0 = null;
+    pts.clear(); g0 = null; updateBadge();
+  });
+  $('gridBtn').addEventListener('click', () => {
+    state.grid = (state.grid + 1) % GRID_MODES.length;
+    const m = GRID_MODES[state.grid];
+    $('gridLabel').textContent = !m ? 'Grid' : m === 'thirds' ? 'Thirds' : 'Grid ' + m;
+    toggle($('gridBtn'), !!m);
+    drawGridLayer();
   });
   $('linesBtn').addEventListener('click', () => {
     const on = overlay.classList.toggle('lines'); toggle($('linesBtn'), on);
@@ -491,7 +915,11 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
   $('flipBtn').addEventListener('click', () => {
     state.flip = !state.flip; toggle($('flipBtn'), state.flip); render();
   });
-  $('resetBtn').addEventListener('click', () => { if (!state.locked) fitImage(); });
+  $('resetBtn').addEventListener('click', () => {
+    if (state.locked) { toast('Unlock first to re-center.'); return; }
+    if (state.pinned) stopPin(false);
+    fitImage();
+  });
   $('hideBtn').addEventListener('click', () => {
     $('controls').classList.remove('show'); $('showBtn').classList.add('show');
   });
@@ -504,19 +932,16 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
   const ctx = canvas.getContext('2d');
   let recorder = null, chunks = [], recStart = 0, recTimer = null, rafId = null, recFile = null;
   let imageInVideo = true;
-
-  $('imgInVid').addEventListener('click', () => {
-    imageInVideo = !imageInVideo; toggle($('imgInVid'), imageInVideo);
-  });
+  $('imgInVid').addEventListener('click', () => { imageInVideo = !imageInVideo; toggle($('imgInVid'), imageInVideo); });
 
   function sizeCanvas(W = 1080) {
-    const vw = window.innerWidth, vh = window.innerHeight;
-    const H = Math.round(W * vh / vw / 2) * 2;
+    const H = Math.round(W * window.innerHeight / window.innerWidth / 2) * 2;
     canvas.width = W; canvas.height = H;
   }
   function paint() {
     const W = canvas.width, H = canvas.height;
     const k = W / window.innerWidth;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalAlpha = 1; ctx.filter = 'none';
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
     const vW = video.videoWidth, vH = video.videoHeight;
@@ -524,16 +949,20 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
       const s = Math.max(W / vW, H / vH);
       ctx.drawImage(video, (W - vW * s) / 2, (H - vH * s) / 2, vW * s, vH * s);
     }
-    if (imageInVideo && overlay.complete && overlay.naturalWidth) {
-      const w = parseFloat(overlay.style.width), h = parseFloat(overlay.style.height);
-      ctx.save();
-      ctx.translate(W / 2 + state.tx * k, H / 2 + state.ty * k);
+    if (imageInVideo && overlay.complete && overlay.naturalWidth && artW) {
+      ctx.setTransform(k, 0, 0, k, 0, 0);
+      ctx.transform(...anchorMatrix());
+      ctx.translate(window.innerWidth / 2 + state.tx, window.innerHeight / 2 + state.ty);
       ctx.rotate(state.rot);
-      ctx.scale(state.scale * k * (state.flip ? -1 : 1), state.scale * k);
+      ctx.scale(state.scale * (state.flip ? -1 : 1), state.scale);
+      ctx.translate(-artW / 2, -artH / 2);
       ctx.globalAlpha = op.value / 100;
       if (overlay.classList.contains('lines')) ctx.filter = 'grayscale(1) contrast(1.8) brightness(1.05)';
-      ctx.drawImage(overlay, -w / 2, -h / 2, w, h);
-      ctx.restore();
+      ctx.drawImage(overlay, 0, 0, artW, artH);
+      ctx.globalAlpha = 1; ctx.filter = 'none';
+      const mode = GRID_MODES[state.grid];
+      if (mode) drawGridOn(ctx, artW, artH, mode, 1 / Math.max(0.2, state.scale * anchor.s));
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
     }
   }
   function drawFrame() { paint(); rafId = requestAnimationFrame(drawFrame); }
@@ -543,12 +972,9 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
   }
   function fmt(sec) { const m = Math.floor(sec / 60), s = Math.floor(sec % 60); return m + ':' + String(s).padStart(2, '0'); }
 
-  // Timelapse state
   let lapseMode = false, lapseFrames = [], lapseInterval = 500, lapseTimer = null, lapseBusy = false;
-  const LAPSE_MAX_HELD = 1800, OUT_FPS = 30, OUT_MAX_FRAMES = 1350; // ≤45s clip
-  $('lapseBtn').addEventListener('click', () => {
-    lapseMode = !lapseMode; toggle($('lapseBtn'), lapseMode);
-  });
+  const LAPSE_MAX_HELD = 1800, OUT_FPS = 30, OUT_MAX_FRAMES = 1350;
+  $('lapseBtn').addEventListener('click', () => { lapseMode = !lapseMode; toggle($('lapseBtn'), lapseMode); });
   function snapFrame() {
     if (lapseBusy) return;
     lapseBusy = true;
@@ -558,7 +984,6 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
       if (!b) return;
       lapseFrames.push(b);
       if (lapseFrames.length >= LAPSE_MAX_HELD) {
-        // Keep memory bounded: drop every other frame and slow the capture rate
         lapseFrames = lapseFrames.filter((_, i) => i % 2 === 0);
         lapseInterval *= 2;
         clearInterval(lapseTimer);
@@ -575,8 +1000,7 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
     recStart = Date.now();
     $('recTime').textContent = '0:00';
     recTimer = setInterval(() => {
-      const t = (Date.now() - recStart) / 1000;
-      $('recTime').textContent = fmt(t) + (lapseMode ? '  ·  timelapse' : '');
+      $('recTime').textContent = fmt((Date.now() - recStart) / 1000) + (lapseMode ? '  ·  timelapse' : '');
     }, 500);
   }
   function startLapse() {
@@ -595,11 +1019,10 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
   const sleepUntil = t => new Promise(r => setTimeout(r, Math.max(0, t - performance.now())));
   async function buildLapse() {
     const frames = lapseFrames; lapseFrames = [];
-    if (frames.length < 2) { alert('That was too short for a timelapse. Record a little longer.'); return; }
+    if (frames.length < 2) { toast('That was too short for a timelapse. Record a little longer.'); return; }
     const step = Math.max(1, Math.ceil(frames.length / OUT_MAX_FRAMES));
     const pick = frames.filter((_, i) => i % step === 0);
-    const holdEnd = OUT_FPS * 1.5; // linger on the finished drawing
-    const total = pick.length + holdEnd;
+    const total = pick.length + OUT_FPS * 1.5;
 
     $('saveTitle').textContent = 'Timelapse';
     $('buildBox').classList.add('show'); $('buildFill').style.width = '0%';
@@ -617,10 +1040,10 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
     const done = new Promise(r => { rec.onstop = r; });
 
     let next = await createImageBitmap(pick[0]);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.drawImage(next, 0, 0, canvas.width, canvas.height);
     rec.start(1000);
-    const frameMs = 1000 / OUT_FPS;
-    let t0 = performance.now();
+    const frameMs = 1000 / OUT_FPS, t0 = performance.now();
     for (let i = 0; i < total; i++) {
       const cur = next;
       const nextP = i + 1 < pick.length ? createImageBitmap(pick[i + 1]) : null;
@@ -636,22 +1059,19 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
     $('buildBox').classList.remove('show');
     $('preview').style.display = '';
     $('saveBtn').disabled = false; $('discardBtn').disabled = false;
-
-    const blob = new Blob(parts, { type: rec.mimeType || parts[0]?.type || 'video/mp4' });
-    showResult(blob, 'trace-lens-timelapse');
+    showResult(new Blob(parts, { type: rec.mimeType || (parts[0] && parts[0].type) || 'video/mp4' }), 'trace-lens-timelapse');
   }
 
   function startRec() {
     if (!window.MediaRecorder || !canvas.captureStream) {
-      alert('Video recording isn’t supported in this browser. Update iOS, then open Trace Lens in Safari.');
+      toast('Video recording isn’t supported in this browser. Update iOS, then open Trace Lens in Safari.');
       return;
     }
     sizeCanvas(); drawFrame();
     const type = pickType();
     const out = canvas.captureStream(30);
-    try {
-      recorder = new MediaRecorder(out, type ? { mimeType: type, videoBitsPerSecond: 4000000 } : {});
-    } catch (_) { recorder = new MediaRecorder(out); }
+    try { recorder = new MediaRecorder(out, type ? { mimeType: type, videoBitsPerSecond: 4000000 } : {}); }
+    catch (_) { recorder = new MediaRecorder(out); }
     chunks = [];
     recorder.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
     recorder.onstop = finishRec;
@@ -664,8 +1084,7 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
     setRecUI(false);
   }
   function finishRec() {
-    const type = (recorder && recorder.mimeType) || chunks[0]?.type || 'video/mp4';
-    const ext = type.includes('mp4') ? 'mp4' : 'webm';
+    const type = (recorder && recorder.mimeType) || (chunks[0] && chunks[0].type) || 'video/mp4';
     const blob = new Blob(chunks, { type });
     chunks = [];
     $('saveTitle').textContent = 'Recording ready';
@@ -690,7 +1109,6 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
   }
   $('recBtn').addEventListener('click', toggleRec);
   $('recBadge').addEventListener('click', () => { if (isRecording()) toggleRec(); });
-
   $('saveBtn').addEventListener('click', async () => {
     if (!recFile) return;
     if (navigator.canShare && navigator.canShare({ files: [recFile] })) {
@@ -707,8 +1125,6 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
     recFile = null;
     $('saveSheet').classList.remove('show');
   });
-
-  window.addEventListener('resize', () => { /* keep current placement */ });
 })();
 </script>
 </body>

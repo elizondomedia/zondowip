@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Trace Lens">
+<meta name="theme-color" content="#1E2124">
+<link rel="apple-touch-icon" href="trace-lens-icon.png">
+<link rel="icon" type="image/png" href="trace-lens-icon.png">
+<title>Trace Lens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --vellum: rgba(246, 249, 250, 0.82);
+  --vellum-solid: #F2F6F7;
+  --graphite: #2E3338;
+  --graphite-soft: #5E666D;
+  --blue: #2F7FA3;          /* non-photo blue, deepened for contrast */
+  --blue-wash: #CFE8F1;
+  --line: rgba(46, 51, 56, 0.14);
+  --stage: #1E2124;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --vellum: rgba(36, 41, 45, 0.82);
+    --vellum-solid: #24292D;
+    --graphite: #E8EDEF;
+    --graphite-soft: #A3ADB3;
+    --blue: #7FC4DD;
+    --blue-wash: #1F4252;
+    --line: rgba(232, 237, 239, 0.16);
+  }
+}
+:root[data-theme="dark"] {
+  --vellum: rgba(36, 41, 45, 0.82);
+  --vellum-solid: #24292D;
+  --graphite: #E8EDEF;
+  --graphite-soft: #A3ADB3;
+  --blue: #7FC4DD;
+  --blue-wash: #1F4252;
+  --line: rgba(232, 237, 239, 0.16);
+}
+*, *::before, *::after { box-sizing: inherit; }
+html { height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); }
+body {
+  height: 100%; margin: 0; overflow: hidden;
+  background: var(--stage); color: var(--graphite);
+  font-family: "Instrument Sans", -apple-system, "Helvetica Neue", Arial, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none; user-select: none;
+}
+button, input { font: inherit; color: inherit; }
+button:focus-visible, input:focus-visible, label:focus-within { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+/* Stage */
+#stage { position: fixed; inset: 0; touch-action: none; overflow: hidden; background: var(--stage); }
+#video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+#video.mirror { transform: scaleX(-1); }
+#overlay {
+  position: absolute; left: 50%; top: 50%;
+  max-width: none; opacity: .5; pointer-events: none;
+  transform-origin: center center; will-change: transform;
+}
+#overlay.lines { filter: grayscale(1) contrast(1.8) brightness(1.05); }
+
+/* Lock badge */
+#lockBadge {
+  position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 12px);
+  transform: translateX(-50%);
+  background: var(--blue); color: #fff; border-radius: 999px;
+  padding: 6px 14px; font-size: 14px; font-weight: 600;
+  display: none; align-items: center; gap: 6px; z-index: 5;
+}
+#lockBadge.show { display: flex; }
+
+/* Controls */
+#controls {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 6;
+  padding: 12px 12px calc(env(safe-area-inset-bottom, 0px) + 12px);
+  display: none;
+}
+#controls.show { display: block; }
+.panel {
+  max-width: 520px; margin: 0 auto;
+  background: var(--vellum);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2);
+  border: 1px solid var(--line); border-radius: 22px;
+  padding: 14px 14px 10px;
+}
+.slider-row { display: flex; align-items: center; gap: 12px; padding: 0 4px 12px; }
+.slider-row label { font-size: 15px; font-weight: 600; min-width: 64px; }
+.slider-row output { font-variant-numeric: tabular-nums; font-size: 15px; min-width: 42px; text-align: right; color: var(--graphite-soft); }
+input[type=range] { flex: 1; -webkit-appearance: none; appearance: none; height: 28px; background: transparent; }
+input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: linear-gradient(to right, var(--blue) var(--fill, 50%), var(--line) var(--fill, 50%)); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%; background: var(--vellum-solid); border: 2px solid var(--blue); margin-top: -11px; }
+input[type=range]::-moz-range-track { height: 4px; border-radius: 2px; background: var(--line); }
+input[type=range]::-moz-range-progress { height: 4px; background: var(--blue); }
+input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: var(--vellum-solid); border: 2px solid var(--blue); }
+
+.tools { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+.tool {
+  background: none; border: 0; border-radius: 14px;
+  padding: 8px 2px 6px; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  font-size: 11.5px; color: var(--graphite-soft); cursor: pointer;
+}
+.tool svg { width: 24px; height: 24px; stroke: var(--graphite); fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.tool[aria-pressed="true"] { background: var(--blue-wash); color: var(--graphite); }
+.tool[aria-pressed="true"] svg { stroke: var(--blue); }
+
+#showBtn {
+  position: fixed; right: 14px; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); z-index: 6;
+  width: 48px; height: 48px; border-radius: 50%;
+  background: var(--vellum); border: 1px solid var(--line);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  display: none; align-items: center; justify-content: center;
+}
+#showBtn.show { display: flex; }
+#showBtn svg { width: 24px; height: 24px; stroke: var(--graphite); fill: none; stroke-width: 1.7; stroke-linecap: round; }
+
+/* Start sheet */
+#start {
+  position: fixed; inset: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 23px, rgba(127,196,221,.10) 23px 24px),
+    repeating-linear-gradient(90deg, transparent 0 23px, rgba(127,196,221,.10) 23px 24px),
+    var(--stage);
+}
+#start.hide { display: none; }
+.sheet {
+  width: 100%; max-width: 380px;
+  background: var(--vellum-solid); border-radius: 28px; padding: 28px 24px 22px;
+  border: 1px solid var(--line);
+}
+.sheet h1 {
+  font-family: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  font-weight: 700; font-size: 40px; line-height: 1; letter-spacing: -0.02em; margin: 0 0 10px;
+}
+.sheet p { margin: 0 0 22px; font-size: 16px; line-height: 1.45; color: var(--graphite-soft); }
+.pick {
+  position: relative; display: flex; align-items: center; gap: 14px;
+  border: 1.5px dashed var(--blue); border-radius: 18px; padding: 14px; margin-bottom: 14px; cursor: pointer;
+}
+.pick input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.thumb {
+  width: 64px; height: 64px; border-radius: 12px; flex: none;
+  background: var(--blue-wash) center/cover no-repeat;
+  display: flex; align-items: center; justify-content: center;
+}
+.thumb svg { width: 28px; height: 28px; stroke: var(--blue); fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.thumb.has svg { display: none; }
+.pick strong { display: block; font-size: 16px; }
+.pick span { font-size: 14px; color: var(--graphite-soft); }
+.go {
+  width: 100%; border: 0; border-radius: 16px; padding: 16px;
+  background: var(--blue); color: #fff; font-weight: 600; font-size: 17px; cursor: pointer;
+}
+:root[data-theme="dark"] .go { color: #10262F; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .go { color: #10262F; } }
+.go:disabled { opacity: .4; }
+.hint { margin-top: 16px; font-size: 13.5px; line-height: 1.5; color: var(--graphite-soft); }
+.err {
+  display: none; margin-top: 14px; padding: 12px 14px; border-radius: 14px;
+  background: var(--blue-wash); font-size: 14px; line-height: 1.45;
+}
+.err.show { display: block; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .panel { transition: opacity .2s; }
+}
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <video id="video" playsinline muted autoplay></video>
+  <img id="overlay" alt="">
+</div>
+
+<div id="lockBadge" role="status">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+  Image locked
+</div>
+
+<div id="controls">
+  <div class="panel">
+    <div class="slider-row">
+      <label for="opacity">Opacity</label>
+      <input id="opacity" type="range" min="5" max="95" value="50" step="1">
+      <output id="opacityOut" for="opacity">50%</output>
+    </div>
+    <div class="tools">
+      <button class="tool" id="lockBtn" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0"/></svg>Lock
+      </button>
+      <button class="tool" id="linesBtn" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><path d="M4 20c4-1 6-6 8-10s4-6 8-6"/><path d="M4 14c2 0 3-2 4-4"/></svg>Lines
+      </button>
+      <button class="tool" id="flipBtn" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M8 7 3 12l5 5V7z"/><path d="M16 7l5 5-5 5V7z"/></svg>Mirror
+      </button>
+      <button class="tool" id="resetBtn">
+        <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>Re-center
+      </button>
+      <label class="tool" id="swapLabel" style="position:relative">
+        <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-8 8"/></svg>New image
+        <input id="swapInput" type="file" accept="image/*" style="position:absolute;inset:0;opacity:0">
+      </label>
+      <button class="tool" id="hideBtn">
+        <svg viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M10.6 6.1A10 10 0 0 1 12 6c6 0 9.5 6 9.5 6a17 17 0 0 1-3 3.6"/><path d="M6.4 7.4C3.9 9.1 2.5 12 2.5 12s3.5 6 9.5 6a9.6 9.6 0 0 0 4.2-1"/></svg>Hide
+      </button>
+    </div>
+  </div>
+</div>
+
+<button id="showBtn" aria-label="Show controls">
+  <svg viewBox="0 0 24 24"><path d="M2.5 12S6 6 12 6s9.5 6 9.5 6-3.5 6-9.5 6S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg>
+</button>
+
+<div id="start">
+  <div class="sheet">
+    <h1>Trace Lens</h1>
+    <p>Lay a see-through copy of any image over your camera, then trace it onto paper.</p>
+    <label class="pick">
+      <div class="thumb" id="thumb">
+        <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-8 8"/></svg>
+      </div>
+      <div>
+        <strong id="pickTitle">Choose an image</strong>
+        <span id="pickSub">From Photos or Files</span>
+      </div>
+      <input id="fileInput" type="file" accept="image/*">
+    </label>
+    <button class="go" id="goBtn" disabled>Start camera</button>
+    <div class="err" id="err" role="alert"></div>
+    <p class="hint">Prop your phone 8–12 inches above the paper. Drag to move the image, pinch to resize and twist to rotate, then tap Lock before you start drawing.</p>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const video = $('video'), overlay = $('overlay'), stage = $('stage');
+  const state = { tx: 0, ty: 0, scale: 1, rot: 0, flip: false, locked: false };
+  let imgURL = null, stream = null, wakeLock = null;
+
+  // ---------- Image loading ----------
+  function loadFile(file, onReady) {
+    $('err').classList.remove('show');
+    if (!file) {
+      showErr('No photo came through. If you’re in the Claude app’s preview, open this page in Safari and choose the photo there.');
+      return;
+    }
+    // iOS sometimes reports an empty type for photos; only reject clear non-images
+    if (file.type && !file.type.startsWith('image/')) {
+      showErr('That file isn’t an image. Choose a JPG, PNG, or HEIC photo.');
+      return;
+    }
+    const fail = () => showErr('This photo couldn’t be opened here. Open Trace Lens in Safari from your own site, or try a screenshot of the photo.');
+    const readAsDataURL = f => new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(f);
+    });
+    const show = src => new Promise((res, rej) => {
+      overlay.onload = () => res(); overlay.onerror = () => rej(); overlay.src = src;
+    });
+    (async () => {
+      try {
+        const data = await readAsDataURL(file);
+        try { await show(data); }
+        catch (_) {
+          // Re-encode formats the viewer can't display (e.g. HEIC)
+          const bmp = await createImageBitmap(file);
+          const max = 3000, k = Math.min(1, max / Math.max(bmp.width, bmp.height));
+          const c = document.createElement('canvas');
+          c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+          c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+          await show(c.toDataURL('image/jpeg', 0.9));
+        }
+        imgURL = overlay.src;
+        fitImage(); onReady && onReady();
+      } catch (_) { fail(); }
+    })();
+  }
+  function fitImage() {
+    const w = overlay.naturalWidth, h = overlay.naturalHeight;
+    if (!w || !h) return;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const base = Math.min(vw * 0.86 / w, vh * 0.62 / h);
+    overlay.style.width = (w * base) + 'px';
+    overlay.style.height = (h * base) + 'px';
+    state.tx = 0; state.ty = -vh * 0.04; state.scale = 1; state.rot = 0;
+    render();
+  }
+  function render() {
+    overlay.style.transform =
+      `translate(-50%,-50%) translate(${state.tx}px,${state.ty}px) rotate(${state.rot}rad) scale(${state.scale}) scaleX(${state.flip ? -1 : 1})`;
+  }
+
+  let lastPicked = null;
+  const onPick = e => {
+    const f = e.target.files && e.target.files[0];
+    if (f && f === lastPicked) return;
+    lastPicked = f;
+    loadFile(f, () => {
+      $('thumb').style.backgroundImage = `url("${imgURL}")`;
+      $('thumb').classList.add('has');
+      $('pickTitle').textContent = 'Image ready';
+      $('pickSub').textContent = 'Tap to choose a different one';
+      $('goBtn').disabled = false;
+    });
+  };
+  $('fileInput').addEventListener('change', onPick);
+  $('fileInput').addEventListener('input', onPick);
+  $('swapInput').addEventListener('change', e => { loadFile(e.target.files[0]); e.target.value = ''; });
+
+  // ---------- Camera ----------
+  async function startCamera() {
+    const err = $('err');
+    err.classList.remove('show');
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      showErr('This browser view can’t reach the camera. Open this page’s link directly in Safari, then try again.');
+      return;
+    }
+    try {
+      if (stream) stream.getTracks().forEach(t => t.stop());
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+      });
+      video.srcObject = stream;
+      await video.play().catch(() => {});
+      $('start').classList.add('hide');
+      $('controls').classList.add('show');
+      requestWake();
+    } catch (e) {
+      if (e && e.name === 'NotAllowedError') {
+        showErr('Camera access was blocked. In Safari, tap the “aA” button in the address bar, choose Website Settings, set Camera to Allow, then tap Start camera again. If you opened this inside the Claude app, open the link in Safari instead.');
+      } else {
+        showErr('The camera didn’t start (' + (e && e.name || 'unknown error') + '). Close other apps using the camera and try again, or open this link in Safari.');
+      }
+    }
+  }
+  function showErr(msg) { const err = $('err'); err.textContent = msg; err.classList.add('show'); }
+  $('goBtn').addEventListener('click', startCamera);
+
+  async function requestWake() {
+    try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (_) {}
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && stream) requestWake();
+  });
+
+  // ---------- Gestures ----------
+  const pts = new Map();
+  let g0 = null;
+  function snapshot() {
+    const arr = [...pts.values()];
+    if (!arr.length) { g0 = null; return; }
+    const c = centroid(arr);
+    g0 = { c, tx: state.tx, ty: state.ty, scale: state.scale, rot: state.rot,
+           d: arr.length > 1 ? dist(arr[0], arr[1]) : 0,
+           a: arr.length > 1 ? angle(arr[0], arr[1]) : 0, n: arr.length };
+  }
+  const centroid = a => ({ x: a.reduce((s, p) => s + p.x, 0) / a.length, y: a.reduce((s, p) => s + p.y, 0) / a.length });
+  const dist = (p, q) => Math.hypot(q.x - p.x, q.y - p.y);
+  const angle = (p, q) => Math.atan2(q.y - p.y, q.x - p.x);
+
+  stage.addEventListener('pointerdown', e => {
+    if (state.locked || !overlay.src) return;
+    stage.setPointerCapture(e.pointerId);
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    snapshot();
+  });
+  stage.addEventListener('pointermove', e => {
+    if (!pts.has(e.pointerId) || !g0) return;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const arr = [...pts.values()];
+    const c = centroid(arr);
+    state.tx = g0.tx + (c.x - g0.c.x);
+    state.ty = g0.ty + (c.y - g0.c.y);
+    if (arr.length > 1 && g0.n > 1 && g0.d > 0) {
+      state.scale = Math.min(8, Math.max(0.1, g0.scale * dist(arr[0], arr[1]) / g0.d));
+      state.rot = g0.rot + (angle(arr[0], arr[1]) - g0.a);
+    }
+    render();
+  });
+  const end = e => { if (pts.delete(e.pointerId)) snapshot(); };
+  stage.addEventListener('pointerup', end);
+  stage.addEventListener('pointercancel', end);
+  // Block iOS page zoom/scroll gestures
+  ['gesturestart', 'gesturechange', 'touchmove'].forEach(t =>
+    document.addEventListener(t, e => { if (e.target.closest && !e.target.closest('input[type=range]')) e.preventDefault(); }, { passive: false }));
+
+  // ---------- Controls ----------
+  const op = $('opacity');
+  function setOpacity() {
+    overlay.style.opacity = op.value / 100;
+    $('opacityOut').textContent = op.value + '%';
+    const pct = (op.value - op.min) / (op.max - op.min) * 100;
+    op.style.setProperty('--fill', pct + '%');
+  }
+  op.addEventListener('input', setOpacity); setOpacity();
+
+  function toggle(btn, on) { btn.setAttribute('aria-pressed', on ? 'true' : 'false'); }
+  $('lockBtn').addEventListener('click', () => {
+    state.locked = !state.locked;
+    toggle($('lockBtn'), state.locked);
+    $('lockBadge').classList.toggle('show', state.locked);
+    pts.clear(); g0 = null;
+  });
+  $('linesBtn').addEventListener('click', () => {
+    const on = overlay.classList.toggle('lines'); toggle($('linesBtn'), on);
+  });
+  $('flipBtn').addEventListener('click', () => {
+    state.flip = !state.flip; toggle($('flipBtn'), state.flip); render();
+  });
+  $('resetBtn').addEventListener('click', () => { if (!state.locked) fitImage(); });
+  $('hideBtn').addEventListener('click', () => {
+    $('controls').classList.remove('show'); $('showBtn').classList.add('show');
+  });
+  $('showBtn').addEventListener('click', () => {
+    $('showBtn').classList.remove('show'); $('controls').classList.add('show');
+  });
+
+  window.addEventListener('resize', () => { /* keep current placement */ });
+})();
+</script>
+</body>
+</html>

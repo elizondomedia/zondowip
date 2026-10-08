@@ -137,7 +137,7 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
 .chip:disabled { opacity: .45; }
 .chip[aria-pressed="true"] { background: var(--blue-wash); color: var(--graphite); border-color: transparent; }
 
-.tools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; }
+.tools { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; }
 .tool {
   position: relative; background: none; border: 0; border-radius: 14px;
   padding: 7px 2px 5px; display: flex; flex-direction: column; align-items: center; gap: 3px;
@@ -303,6 +303,9 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
       <button class="tool" id="flipBtn" aria-pressed="false">
         <svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M8 7 3 12l5 5V7z"/><path d="M16 7l5 5-5 5V7z"/></svg>Mirror
       </button>
+      <button class="tool" id="lensBtn">
+        <svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span id="lensLabel">Lens</span>
+      </button>
       <button class="tool" id="resetBtn">
         <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>Re-center
       </button>
@@ -365,7 +368,7 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
     </div>
     <button class="go" id="goBtn" disabled>Start camera</button>
     <div class="err" id="err" role="alert"></div>
-    <p class="hint">Prop your phone 8–12 inches above the paper. Position the image with drag, pinch and twist, then tap <strong>Pin</strong> so it stays on the paper even if the phone gets bumped.</p>
+    <p class="hint">Prop your phone 8–12 inches above the paper. Position the image with drag, pinch and twist, then tap <strong>Pin</strong> so it stays on the paper even if the phone gets bumped. For big canvases, add 3–4 small pieces of dark tape near the edges first.</p>
   </div>
 </div>
 
@@ -406,8 +409,13 @@ const Tracker = (() => {
     }
     return I;
   }
-  function init(f) {
-    const { g, w, h } = f;
+  const MAX_PATCHES = 48, SPACING = 16;
+  function inv(T) {
+    const s = 1 / T.s, c = Math.cos(-T.th) * s, sn = Math.sin(-T.th) * s;
+    return { s, th: -T.th, tx: -(c * T.tx - sn * T.ty), ty: -(sn * T.tx + c * T.ty) };
+  }
+  // Find well-textured spots (corners) in a frame, strongest first
+  function detect(g, w, h) {
     const m = H + 4, cands = [];
     for (let y = m; y < h - m; y += 5) {
       for (let x = m; x < w - m; x += 5) {
@@ -426,22 +434,48 @@ const Tracker = (() => {
     }
     cands.sort((a, b) => b.score - a.score);
     const best = cands.length ? cands[0].score : 0;
-    const minScore = Math.max(6000, best * 0.03), spacing = 16;
+    const minScore = Math.max(6000, best * 0.03);
+    return cands.filter(c => c.score >= minScore);
+  }
+  function template(g, w, x, y) {
+    let mean = 0;
+    for (let j = -H; j <= H; j++) for (let i = -H; i <= H; i++) mean += g[(y + j) * w + x + i];
+    mean /= N;
+    const data = new Float32Array(N);
+    let k = 0;
+    for (let j = -H; j <= H; j++) for (let i = -H; i <= H; i++) data[k++] = g[(y + j) * w + x + i] - mean;
+    return data;
+  }
+  function init(f) {
+    const { g, w } = f;
     patches = [];
-    for (const c of cands) {
-      if (c.score < minScore || patches.length >= 48) break;
-      if (patches.some(p => Math.abs(p.x - c.x) < spacing && Math.abs(p.y - c.y) < spacing)) continue;
-      let mean = 0;
-      for (let j = -H; j <= H; j++) for (let i = -H; i <= H; i++) mean += g[(c.y + j) * w + c.x + i];
-      mean /= N;
-      const data = new Float32Array(N);
-      let k = 0;
-      for (let j = -H; j <= H; j++) for (let i = -H; i <= H; i++) data[k++] = g[(c.y + j) * w + c.x + i] - mean;
-      patches.push({ x: c.x, y: c.y, data });
+    for (const c of detect(g, w, f.h)) {
+      if (patches.length >= MAX_PATCHES) break;
+      if (patches.some(p => Math.abs(p.x - c.x) < SPACING && Math.abs(p.y - c.y) < SPACING)) continue;
+      patches.push({ x: c.x, y: c.y, data: template(g, w, c.x, c.y), miss: 0 });
     }
     cur = { s: 1, th: 0, tx: 0, ty: 0 };
-    lostFrames = 0;
+    lostFrames = 0; pending = null;
     return patches.length;
+  }
+  // While tracking is solid: retire landmarks that keep failing (covered by new
+  // strokes or a resting hand) and learn fresh ones from the current view.
+  function refresh(f) {
+    if (lostFrames > 0 || !patches.length) return 0;
+    const { g, w, h } = f;
+    const before = patches.length;
+    patches = patches.filter(p => p.miss < 40);
+    if (patches.length >= MAX_PATCHES * 0.8) return before - patches.length;
+    const placed = patches.map(p => apply(cur, p.x, p.y));
+    const Ti = inv(cur);
+    for (const c of detect(g, w, h)) {
+      if (patches.length >= MAX_PATCHES) break;
+      if (placed.some(q => Math.abs(q[0] - c.x) < SPACING && Math.abs(q[1] - c.y) < SPACING)) continue;
+      const [rx, ry] = apply(Ti, c.x, c.y);
+      patches.push({ x: rx, y: ry, data: template(g, w, c.x, c.y), miss: 0 });
+      placed.push([c.x, c.y]);
+    }
+    return patches.length - before;
   }
   function match(p, g, w, h, I, cx, cy, R, step) {
     let bx = -1, by = -1, best = Infinity;
@@ -464,6 +498,7 @@ const Tracker = (() => {
     }
     return bx < 0 ? null : { x: bx, y: by, cost: best / N };
   }
+  let pending = null;
   function track(f) {
     const { g, w, h } = f;
     if (!patches.length) return { ok: false };
@@ -474,9 +509,10 @@ const Tracker = (() => {
       const [px, py] = apply(cur, p.x, p.y);
       let r = match(p, g, w, h, I, Math.round(px), Math.round(py), lost ? 34 : 9, lost ? 2 : 1);
       if (r && lost) r = match(p, g, w, h, I, r.x, r.y, 2, 1) || r;
-      if (r && r.cost < 14) pairs.push({ p: [p.x, p.y], q: [r.x, r.y] });
+      if (r && r.cost < 14) pairs.push({ p: [p.x, p.y], q: [r.x, r.y], patch: p });
     }
-    if (pairs.length < 5) { lostFrames++; return { ok: false }; }
+    const fail = () => { lostFrames++; patches.forEach(p => p.miss++); return { ok: false }; };
+    if (pairs.length < 5) return fail();
     let bestIn = null;
     for (let it = 0; it < 80; it++) {
       const a = pairs[(Math.random() * pairs.length) | 0], b = pairs[(Math.random() * pairs.length) | 0];
@@ -486,13 +522,23 @@ const Tracker = (() => {
       const inl = pairs.filter(m => { const [x, y] = apply(T, m.p[0], m.p[1]); return Math.hypot(x - m.q[0], y - m.q[1]) < 2.2; });
       if (!bestIn || inl.length > bestIn.length) bestIn = inl;
     }
-    if (!bestIn || bestIn.length < Math.max(6, pairs.length * 0.4, patches.length * 0.25)) { lostFrames++; return { ok: false }; }
+    if (!bestIn || bestIn.length < Math.max(6, pairs.length * 0.4, patches.length * 0.25)) return fail();
     const T = fit(bestIn);
-    if (!T || T.s < 0.6 || T.s > 1.6) { lostFrames++; return { ok: false }; }
+    if (!T || T.s < 0.6 || T.s > 1.6) return fail();
+    // A sudden big jump backed by a weak majority must repeat on the next frame
+    // before we trust it, so one confusing frame can't fling the image away.
+    const jump = Math.hypot(T.tx - cur.tx, T.ty - cur.ty) > 10 || Math.abs(T.s - cur.s) > 0.06 || Math.abs(T.th - cur.th) > 0.06;
+    if (jump && bestIn.length < pairs.length * 0.7) {
+      const agrees = pending && Math.hypot(T.tx - pending.tx, T.ty - pending.ty) < 3 && Math.abs(T.s - pending.s) < 0.02;
+      if (!agrees) { pending = T; lostFrames++; return { ok: false, settling: true }; }
+    }
+    pending = null;
+    const good = new Set(bestIn.map(m => m.patch));
+    for (const p of patches) p.miss = good.has(p) ? 0 : p.miss + 1;
     cur = T; lostFrames = 0;
     return { ok: true, T, inliers: bestIn.length, total: patches.length };
   }
-  return { init, track, apply, fit, count: () => patches.length };
+  return { init, track, refresh, apply, fit, inv, count: () => patches.length };
 })();
 
 /* ===== App ===== */
@@ -725,6 +771,50 @@ const Tracker = (() => {
   $('fileInput').addEventListener('input', onPick);
 
   // ---------- Camera ----------
+  // iPhones with 2–3 back lenses expose a combined "virtual" camera that quietly
+  // hops between lenses (into macro when something comes close, or as the phone
+  // warms up). Each hop shifts the picture under the traced image, so Trace Lens
+  // uses one physical lens instead. The Lens button can still switch lenses.
+  const LENSES = [
+    { id: 'wide', label: 'Wide', test: l => /^back camera$/i.test(l.trim()) || (/back|rear|environment/i.test(l) && !/dual|triple|ultra|tele/i.test(l)) },
+    { id: 'ultra', label: 'Ultra wide', test: l => /ultra/i.test(l) && !/dual|triple/i.test(l) },
+    { id: 'auto', label: 'Auto', test: l => /dual|triple/i.test(l) },
+  ];
+  let lensOptions = [], lensIdx = 0, camStopping = false, lastGeom = null, wakeTipShown = false;
+  const camConstraints = deviceId => ({
+    audio: false,
+    video: Object.assign(
+      deviceId ? { deviceId: { exact: deviceId } } : { facingMode: { ideal: 'environment' } },
+      { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30, max: 30 } })
+  });
+  async function openStream(deviceId) {
+    camStopping = true;
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    camStopping = false;
+    stream = await navigator.mediaDevices.getUserMedia(camConstraints(deviceId));
+    const track = stream.getVideoTracks()[0];
+    track.addEventListener('ended', onCamEnded);
+    video.srcObject = stream;
+    await video.play().catch(() => {});
+    return track;
+  }
+  async function findLenses() {
+    lensOptions = [];
+    try {
+      const devs = (await navigator.mediaDevices.enumerateDevices())
+        .filter(d => d.kind === 'videoinput' && d.label && !/front|user|facetime/i.test(d.label));
+      for (const L of LENSES) {
+        const d = devs.find(d => L.test(d.label));
+        if (d) lensOptions.push({ ...L, deviceId: d.deviceId, name: d.label });
+      }
+    } catch (_) {}
+  }
+  function updateLensUI() {
+    const L = lensOptions[lensIdx];
+    $('lensLabel').textContent = L ? L.label : 'Lens';
+  }
+  const geom = () => ({ vw: window.innerWidth, vh: window.innerHeight, W: video.videoWidth, H: video.videoHeight });
+
   async function startCamera() {
     $('err').classList.remove('show');
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -732,13 +822,15 @@ const Tracker = (() => {
       return;
     }
     try {
-      if (stream) stream.getTracks().forEach(t => t.stop());
-      stream = await navigator.mediaDevices.getUserMedia({
-        audio: false,
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
-      });
-      video.srcObject = stream;
-      await video.play().catch(() => {});
+      let track = await openStream(null);
+      await findLenses();
+      lensIdx = Math.max(0, lensOptions.findIndex(l => l.id === 'wide'));
+      const want = lensOptions[lensIdx];
+      if (want && track.label !== want.name) {
+        try { track = await openStream(want.deviceId); } catch (_) { track = await openStream(null); }
+      }
+      updateLensUI();
+      lastGeom = geom();
       $('start').classList.add('hide');
       $('controls').classList.add('show');
       requestWake();
@@ -751,11 +843,93 @@ const Tracker = (() => {
     }
   }
   $('goBtn').addEventListener('click', startCamera);
+
+  async function restartCamera(msg) {
+    const wasPinned = state.pinned;
+    if (wasPinned) stopPin(true);
+    try {
+      const L = lensOptions[lensIdx];
+      await openStream(L && L.deviceId);
+      lastGeom = geom();
+      toast(msg, 6000);
+      if (wasPinned) setTimeout(startPin, 800);
+    } catch (_) {
+      toast('The camera stopped and couldn’t restart. Close other apps using the camera, then reopen Trace Lens.', 9000);
+    }
+  }
+  function onCamEnded() {
+    if (camStopping || document.visibilityState !== 'visible') return;
+    restartCamera('The camera stopped for a moment, so Trace Lens restarted it. Check that the image still lines up.');
+  }
+
+  // If the camera feed or the screen changes size mid-session, scale the image
+  // with it so it stays on the same spot of the paper.
+  function onGeomChange() {
+    const g = geom();
+    if (!g.W || !g.H) return;
+    const o = lastGeom; lastGeom = g;
+    if (!o || !o.W) return;
+    if (o.vw === g.vw && o.vh === g.vh && o.W === g.W && o.H === g.H) return;
+    if ((o.vw > o.vh) !== (g.vw > g.vh)) {
+      toast('The screen rotated. Turn on Portrait Orientation Lock in Control Center so tilting the phone can’t rotate it, then tap Re-center.', 9000);
+      return;
+    }
+    const span = q => Math.max(q.vw / q.W, q.vh / q.H) * Math.max(q.W, q.H);
+    const k = span(g) / span(o);
+    if (Math.abs(k - 1) < 0.005) return;
+    const wasPinned = state.pinned;
+    if (wasPinned) stopPin(true);
+    state.tx *= k; state.ty *= k; state.scale *= k;
+    render(); drawGridLayer();
+    if (wasPinned) setTimeout(startPin, 300);
+    toast(o.W === g.W && o.H === g.H
+      ? 'The screen size changed, so Trace Lens adjusted the image to match.'
+      : `The camera switched modes (${o.W}×${o.H} → ${g.W}×${g.H}), so Trace Lens adjusted the image to match.`, 5000);
+  }
+  video.addEventListener('resize', onGeomChange);
+  window.addEventListener('resize', () => setTimeout(onGeomChange, 60));
+
+  $('lensBtn').addEventListener('click', async () => {
+    if (isRecording()) { toast('Stop recording before switching lenses.'); return; }
+    if (lensOptions.length < 2) {
+      toast(lensOptions.length ? 'Only one back lens is available here.' : 'Lens choice isn’t available on this device.');
+      return;
+    }
+    lensIdx = (lensIdx + 1) % lensOptions.length;
+    const L = lensOptions[lensIdx];
+    if (state.pinned) stopPin(true);
+    try {
+      await openStream(L.deviceId);
+      lastGeom = geom(); updateLensUI();
+      toast(L.id === 'auto'
+        ? 'Auto: the iPhone picks the lens and may hop between them, which shifts the picture. Use Wide for steady tracing.'
+        : L.id === 'ultra'
+          ? 'Ultra wide: fits a bigger canvas from closer, with some bending near the edges. Reposition the image.'
+          : 'Wide: the steadiest choice for tracing. Reposition the image if needed.', 6500);
+    } catch (_) { toast('That lens couldn’t start.'); }
+  });
+
   async function requestWake() {
-    try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (_) {}
+    try {
+      if ('wakeLock' in navigator) {
+        if (wakeLock && !wakeLock.released) return;
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => {
+          if (document.visibilityState === 'visible' && stream) setTimeout(requestWake, 1000);
+        });
+        return;
+      }
+    } catch (_) {}
+    if (!wakeTipShown) {
+      wakeTipShown = true;
+      toast('Tip: if the screen dims while you trace, set Settings → Display & Brightness → Auto-Lock to Never while drawing.', 8000);
+    }
   }
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && stream) requestWake();
+    if (document.visibilityState !== 'visible' || !stream) return;
+    requestWake();
+    const t = stream.getVideoTracks()[0];
+    if (!t || t.readyState === 'ended') restartCamera('Camera resumed. Check that the image still lines up.');
   });
 
   // ---------- Pin to paper ----------
@@ -791,27 +965,31 @@ const Tracker = (() => {
     if (state.pinned) return;
     setPinStatus(state.locked ? 'locked' : 'none');
   }
-  let pinRaf = null, lostSince = 0;
+  let pinRaf = null, lostSince = 0, lastTrackAt = 0, goodFrames = 0, lostHintShown = false;
   function startPin() {
     const f = grabGray();
     if (!f) { toast('Start the camera first.'); return; }
     const n = Tracker.init(f);
     if (n < 8) {
-      toast('Not enough detail to pin to. Make sure the paper’s corners are in view, set it on a patterned or darker surface, or draw small X marks near the corners.', 7000);
+      toast('Not enough detail to pin to. Stick 3–4 small pieces of dark tape (or draw bold X marks) near the edges of your paper, keep them in view, then tap Pin again.', 8000);
       return;
     }
     state.pinned = true; toggle($('pinBtn'), true);
-    pts.clear(); g0 = null;
+    pts.clear(); g0 = null; goodFrames = 0; lostSince = 0; lostHintShown = false;
     setPinStatus('pinned');
     pinLoop();
   }
   function pinLoop() {
     if (!state.pinned) return;
-    const f = grabGray();
+    const now = performance.now();
+    // ~20 checks a second is plenty and keeps the phone cooler
+    const f = now - lastTrackAt >= 45 ? grabGray() : null;
     if (f) {
+      lastTrackAt = now;
       const r = Tracker.track(f);
       if (r.ok) {
         lostSince = 0;
+        if (++goodFrames % 15 === 0) Tracker.refresh(f);
         const T = r.T, a = mapA, [bx, by] = mapB;
         const c = Math.cos(T.th) * T.s, s = Math.sin(T.th) * T.s;
         const E = a * T.tx + bx - (c * bx - s * by);
@@ -825,8 +1003,12 @@ const Tracker = (() => {
         render();
         setPinStatus('pinned');
       } else {
-        if (!lostSince) lostSince = performance.now();
-        if (performance.now() - lostSince > 400) setPinStatus('lost');
+        if (!lostSince) lostSince = now;
+        if (now - lostSince > 400) setPinStatus('lost');
+        if (now - lostSince > 5000 && !lostHintShown) {
+          lostHintShown = true;
+          toast('Can’t find the paper. Keep the tape marks or paper corners in view and the phone steady. Tap Pin to unpin and re-pin if it doesn’t catch.', 8000);
+        }
       }
     }
     pinRaf = video.requestVideoFrameCallback ? video.requestVideoFrameCallback(pinLoop) : requestAnimationFrame(pinLoop);

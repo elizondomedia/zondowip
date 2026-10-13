@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Crystal">
+<meta name="theme-color" content="#000000">
+<title>Crystal Player</title>
+<style>
+  :root { --bg: #000; --fg: #fff; --btn: rgba(255,255,255,0.14); }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg); color: var(--fg);
+    overflow: hidden; overscroll-behavior: none;
+    font-family: -apple-system, system-ui, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #wrap {
+    position: fixed; inset: 0;
+    width: 100vw; height: 100vh; height: 100dvh;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right)
+             env(safe-area-inset-bottom) env(safe-area-inset-left);
+    background: var(--bg);
+  }
+  iframe { width: 100%; height: 100%; border: 0; display: block; background: var(--bg); }
+  #fs {
+    position: fixed; z-index: 10;
+    top: calc(env(safe-area-inset-top) + 10px);
+    right: calc(env(safe-area-inset-right) + 10px);
+    background: var(--btn); color: var(--fg);
+    border: 0; border-radius: 10px; padding: 8px 12px;
+    font-size: 14px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    transition: opacity .4s;
+  }
+  #fs.hide { opacity: 0; pointer-events: none; }
+  #tip {
+    position: fixed; z-index: 11; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 16px);
+    transform: translateX(-50%); width: min(92vw, 420px);
+    background: rgba(30,30,30,.95); border-radius: 14px; padding: 14px 16px;
+    font-size: 14px; line-height: 1.4; display: none;
+  }
+  #tip b { display: block; margin-bottom: 4px; }
+  #tip button { margin-top: 10px; background: var(--btn); color: var(--fg); border: 0; border-radius: 8px; padding: 6px 12px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <iframe id="game" allow="fullscreen; autoplay; gamepad" allowfullscreen></iframe>
+</div>
+<button id="fs" aria-label="Full screen">⤢ Full screen</button>
+<div id="tip">
+  <b>Full screen on iPhone</b>
+  Tap the Share button → <em>Add to Home Screen</em>, then open it from your home screen. It'll launch with no browser bars. Turn your phone sideways for a bigger screen.
+  <br><button id="tipClose">Got it</button>
+</div>
+<script>
+  // Swap games with ?game=... in the link; defaults to Pokémon Crystal.
+  var params = new URLSearchParams(location.search);
+  var game = params.get('game') || 'pokemon-crystal';
+  document.getElementById('game').src =
+    'https://retrogamesnexus.com/embed/games/' + encodeURIComponent(game);
+
+  var btn = document.getElementById('fs');
+  var tip = document.getElementById('tip');
+  var standalone = window.navigator.standalone ||
+    window.matchMedia('(display-mode: standalone)').matches;
+  if (standalone) btn.classList.add('hide');
+
+  btn.addEventListener('click', function () {
+    var el = document.documentElement;
+    var req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (req) {
+      try {
+        var p = req.call(el);
+        if (p && p.catch) p.catch(function () { tip.style.display = 'block'; });
+      } catch (e) { tip.style.display = 'block'; }
+    } else {
+      tip.style.display = 'block'; // iPhone Safari doesn't support page fullscreen
+    }
+  });
+  document.getElementById('tipClose').onclick = function () { tip.style.display = 'none'; };
+
+  setTimeout(function () { btn.classList.add('hide'); }, 5000);
+  document.addEventListener('fullscreenchange', function () {
+    btn.classList.toggle('hide', !!document.fullscreenElement);
+  });
+</script>
+</body>
+</html>

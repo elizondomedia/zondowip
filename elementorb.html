@@ -47,7 +47,7 @@ function toggleFS(){if(!fsOK)return;try{if(isFS()){(document.exitFullscreen||doc
 
 /* ----- save: versioned, validated field by field ----- */
 const SAVE_KEY='elementum.save',SAVE_V=2;
-function defSave(){return{v:SAVE_V,started:false,el:{normal:1},cur:'normal',done:{},frag:{},mem:{},wh:{},far:{},realm:null,ck:0,deaths:0,time:0,ended:false,hubx:0,
+function defSave(){return{v:SAVE_V,started:false,el:{normal:1},cur:'normal',done:{},diff:{},frag:{},mem:{},wh:{},far:{},rd:0,realm:null,ck:0,deaths:0,time:0,ended:false,hubx:0,
   set:{music:3,sfx:3,fx:1,shake:1,calm:0,hints:1}}}
 function loadSave(){const d=defSave();try{const raw=localStorage.getItem(SAVE_KEY);if(!raw)return d;const o=JSON.parse(raw);
   if(!o||o.v!==SAVE_V||typeof o.el!=='object'||!o.el)return d;
@@ -56,6 +56,7 @@ function loadSave(){const d=defSave();try{const raw=localStorage.getItem(SAVE_KE
   d.started=!!o.started;d.cur=d.el[o.cur]&&o.cur!=='gold'?o.cur:'normal';
   for(const k of['done','frag','mem','wh'])if(o[k]&&typeof o[k]==='object')for(const j in o[k])if(o[k][j])d[k][j]=1;
   PATHS.forEach((p,i)=>{if(p[1].every(e=>d.done[ZONE[e][0]]))d.done['path'+(i+1)]=1}); /* saves from the 16-realm build */
+  for(const r of REALMS)if(d.done[r.id])d.diff[r.id]=((o.diff&&o.diff[r.id])|0)&7|1;d.rd=clamp(o.rd|0,0,2);
   if(o.far&&typeof o.far==='object')for(const j in o.far)if(REALM_BY[j])d.far[j]=o.far[j]|0;
   d.realm=typeof o.realm==='string'&&REALM_BY[o.realm]?o.realm:null;d.ck=o.ck|0;d.deaths=o.deaths|0;d.time=+o.time||0;d.ended=!!o.ended;d.hubx=+o.hubx||0;
   if(o.set&&typeof o.set==='object')for(const k in d.set)if(typeof o.set[k]==='number'&&isFinite(o.set[k]))d.set[k]=clamp(o.set[k]|0,0,4);
@@ -148,12 +149,17 @@ function maxHp(){let n=3;for(let c=0;c<4;c++)if(chapDone(c))n++;return n}
 const FRN={};
 function fragTotals(){for(const r of REALMS)FRN[r.id]=buildLevel(r.i).nf}
 function fragGot(id){let n=0;const pre=id+':';for(const k in S.frag)if(k.startsWith(pre))n++;return Math.min(n,FRN[id]||n)}
-function completion(){let n=0,t=0;REALMS.forEach(r=>{t+=1+(FRN[r.id]||0);if(S.done[r.id])n++;n+=fragGot(r.id)});STD.forEach(e=>{t+=3;n+=S.el[e]||0});
+const TIER=['Easy','Normal','Hard'],tierName=(R,d)=>d?TIER[d]:R.tut?'Tutorial':'Easy';
+const tierDone=(id,d)=>!!((S.diff[id]|0)>>d&1);
+function nextTier(i){const id=REALMS[i].id;for(let d=0;d<3;d++)if(!tierDone(id,d))return d;return 2}
+function fieldOK(f){return!G.field||f==='normal'||G.field.includes(f)}
+function completion(){let n=0,t=0;REALMS.forEach(r=>{t+=3+(FRN[r.id]||0);for(let d=0;d<3;d++)if(tierDone(r.id,d))n++;n+=fragGot(r.id)});STD.forEach(e=>{t+=3;n+=S.el[e]||0});
   for(const k in MEM){t++;if(S.mem[k])n++}return Math.round(100*n/t)}
 
 /* ===== WORLD: level builder, puzzle segments, resistance nooks, wisp guards, gauntlets, realm layouts =====
    Every piece also records its intended solution (b.bot) so each realm can be machine-verified. */
-function Builder(){const b={x:0,gy:GY,o:[],cps:[],hints:[],bot:[],n:0,fn:0};
+function Builder(d){const b={d:d||0,x:0,gy:GY,o:[],cps:[],hints:[],bot:[],n:0,fn:0};
+  b.foes=(x0,list,ward)=>{for(const a of list)if(b.d>=(a[3]||0))b.en(a[0],x0+a[1],x0+a[2],ward)}; /* [kind, from, to, minimum difficulty] */
   b.add=(t,x,y,w,h,ex)=>{const o=Object.assign({t,x,y,w,h},ex||{});b.o.push(o);return o};
   b.ground=w=>{b.add('g',b.x,b.gy,w,900-b.gy);b.x+=w;return b};
   b.gap=w=>{b.x+=w;return b};
@@ -190,7 +196,7 @@ electric(b,l){const x0=b.x,gy=b.gy,id=b.id();b.ground(620);b.add('sw',x0+330,gy-
   b.bot.push(['form','electric'],['R','x>',x0+320],['tap'],['','t',1.2],['R','x>',x0+540]);
   if(l>1){const xs=b.x,i2=b.id();b.add('lift',xs,gy,90,16,{y0:gy,y1:gy-180,id:i2,on:0,ph:0,tm:.4});b.add('sw',xs+33,gy-160,24,24,{to:i2});
     b.x=xs+90;b.step(-180);b.ground(320);b.hint(xs-220,'Stand on the dead lift, then give it lightning');
-    b.bot.push(['R','x>',xs+28],['tap'],['','y<',gy-207],['R','x>',xs+150])}},
+    b.bot.push(['','lift'],['R','x>',xs+28],['tap'],['','y<',gy-207],['R','x>',xs+150])}},
 ice(b,l){const x0=b.x,gy=b.gy,w=l>1?480:320;b.ground(300);const xs=b.x;b.add('g',xs,gy+200,w,900);b.add('pool',xs,gy+8,w,192);b.add('g',xs-60,TOP,w-50,gy-46-TOP,{slick:1});
   b.x=xs+w;b.step(-62);b.ground(l>1?460:320);b.hint(x0,'Ice · press E to Freeze — the water will hold you');
   b.bot.push(['form','ice'],['R','x>',xs-70],['tap'],['R','x>',xs+w-75],['RJ','x>',xs+w+30],['R','x>',xs+w+60]);
@@ -206,7 +212,7 @@ acid(b,l){const x0=b.x;b.ground(l>1?1150:560);b.bar('bars',x0+300,26);b.hint(x0+
 powder(b,l){const x0=b.x,gy=b.gy;b.ground(l>1?700:560);b.bar('grate',x0+300,40);b.hint(x0+20,'Powder · press E to Disperse — drift through the grate');
   b.bot.push(['form','powder'],['R','x>',x0+240],['tap'],['R','x>',x0+380]);
   if(l>1){const xs=b.x;b.step(-280);b.ground(360);b.add('vent',xs-70,gy-60,40,40,{x2:xs+60,y2:gy-330});b.hint(xs-300,'Dust rides the vents — Disperse, then drift into the mouth');
-    b.bot.push(['','t',3],['R','x>',xs-160],['tap'],['R','x>',xs+140])}},
+    b.bot.push(['','t',5],['R','x>',xs-160],['tap'],['R','x>',xs+140])}},
 air(b,l){const x0=b.x,gy=b.gy;b.ground(300);b.gap(440);b.ground(l>1?500:300);b.hint(x0,'Air · jump again in mid-air, hold Jump to glide');
   b.bot.push(['form','air'],['R','x>',x0+262],['RJ','t',.42],['R','t',.06],['RJ','x>',x0+770],['R','x>',x0+800]);
   if(l>1){const xs=b.x,id=b.id();b.add('updraft',xs-110,gy-390,100,390);b.step(-300);b.ground(700);b.add('turb',xs+250,b.gy-120,50,50,{to:id});b.bar('gate',xs+420,26,{id});
@@ -233,7 +239,7 @@ rock(b,l){const x0=b.x,gy=b.gy;b.ground(l>1?1400:950);b.bar('crack',x0+300,40);b
 phantom(b,l){const x0=b.x,gy=b.gy;b.ground(l>1?700:600);b.bar('veil',x0+300,40);b.frag(x0+307,gy-42);b.hint(x0+20,'Phantom · press E to Phase — pass the spectral veil');
   b.bot.push(['form','phantom'],['R','x>',x0+240],['tap'],['R','x>',x0+400]);
   if(l>1){b.en('sent',x0+360,x0+500);const xs=b.x;b.add('ghost',xs-4,gy,368,14);b.gap(360);b.ground(300);b.hint(xs-110,'Ghost-stone holds only the phased');
-    b.bot.push(['R','x>',x0+590],['','t',4.4],['R','x>',xs-60],['tap'],['R','x>',xs+420])}},
+    b.bot.push(['R','x>',x0+590],['','t',5.6],['R','x>',xs-60],['tap'],['R','x>',xs+420])}},
 crystal(b,l){const x0=b.x,gy=b.gy,id=b.id();b.ground(l>1?800:700);b.add('beam',x0+200,TOP,36,gy-TOP,{on:1});b.add('lens',x0+400,gy-190,26,26,{to:id});
   b.bar('gate',x0+500,26,{id,need:l>1?2:1});if(l>1)b.add('lens',x0+330,gy-120,26,26,{to:id});
   b.hint(x0,'Crystal · stand in the light, press E to bend it into the lens');
@@ -262,19 +268,22 @@ magnetic:nook('spike',130,'Magnetic polarity — iron spikes bend away from you'
 psychic(b){const x0=b.x;b.ground(460);b.en('sent',x0+150,x0+250);b.frag(x0+212,b.gy-42);b.hint(x0-40,'Psychic wards the mind — sentinels cannot sense you');b.bot.push(['R','x>',x0+380])},
 spiky(b){const x0=b.x;b.ground(460);b.haz('bramble',x0+140,150);b.en('wisp',x0+150,x0+250);b.frag(x0+202,b.gy-42);b.hint(x0-40,'Thorns — lesser wisps die on touch, and brambles cannot cut you');b.bot.push(['R','x>',x0+380])},
 crystal(b){const x0=b.x;b.ground(520);b.en('spit',x0+330,x0+330);b.frag(x0+400,b.gy-42);b.hint(x0-40,'Crystal refracts — a wisp bolt is thrown back at its maker');b.bot.push(['clear',420],['R','x>',x0+450])}};
-/* a guarded fragment: attack practice */
-function GUARD(b,e,kind){const x0=b.x;b.ground(480);b.en(kind||'wisp',x0+210,x0+330);b.frag(x0+392,b.gy-100);b.hint(x0-60,'Press X to attack — '+ATK[e][0]);
-  b.bot.push(['form',e],['clear',420],['R','x>',x0+352],['RJ','x>',x0+425],['R','x>',x0+450])}
-/* tutorial finale: a Gold Catalyst, then a run of wisps */
-function FINALE(b,e,q){const x0=b.x;b.ground(1000);b.add('gcat',x0+140,b.gy-72,30,30,{q,dur:10});b.en('wisp',x0+330,x0+470);b.en('shade',x0+520,x0+700);b.en('wisp',x0+740,x0+860);b.frag(x0+930,b.gy-100);
-  b.hint(x0-40,'A Gold Catalyst. Recover '+q+' fragments on this path and it lends you a moment of invincibility');
-  b.bot.push(['form',e],['R','x>',x0+200],['clear',720],['R','x>',x0+890],['RJ','x>',x0+960])}
+/* a guarded fragment: attack practice. Higher difficulties add chasers and shooters */
+function GUARD(b,e,kind){const x0=b.x;b.ground(640);b.foes(x0,[[kind||'wisp',200,320],['spit',430,430],['shade',240,400,1],['wisp',300,410,2],['spit',484,484,2]]);b.frag(x0+556,b.gy-100);b.hint(x0-60,'Press X to attack — '+ATK[e][0]);
+  b.bot.push(['form',e],['clear',560],['R','x>',x0+516],['RJ','x>',x0+589],['R','x>',x0+610])}
+/* the approach to a trial */
+function LEAD(b,e){const x0=b.x;b.ground(560);b.foes(x0,[['wisp',200,360],['shade',250,440,1],['spit',470,470,2]]);b.bot.push(['form',e],['clear',520],['R','x>',x0+510])}
+/* path finale: a Gold Catalyst, then a run of wisps */
+function FINALE(b,e){const x0=b.x;b.ground(1200);b.add('gcat',x0+140,b.gy-72,30,30,{q:-1,dur:10});
+  b.foes(x0,[['wisp',330,470],['shade',520,700],['spit',780,780],['wisp',840,960],['shade',600,820,1],['spit',900,900,1],['sent',400,760,2],['spit',1010,1010,2]]);b.frag(x0+1130,b.gy-100);
+  b.hint(x0-40,'A Gold Catalyst. Gather the fragments it asks for on this run and it lends you a moment of invincibility');
+  b.bot.push(['form',e],['R','x>',x0+200],['clear',920],['R','x>',x0+1090],['RJ','x>',x0+1160])}
 /* a warded arena: the gate opens when every warded wisp has fallen */
-function NEST(b,list,form,W){const x0=b.x,id=b.id();b.ground(W+260);for(const a of list)b.en(a[0],x0+a[1],x0+a[2],id);b.bar('gate',x0+W+60,26,{id,ward:1});
+function NEST(b,list,form,W){const x0=b.x,id=b.id();b.ground(W+260);b.foes(x0,list.concat([['spit',W-50,W-50,1],['shade',110,W-140,2]]),id);b.bar('gate',x0+W+60,26,{id,ward:1});
   b.hint(x0-40,'A warded gate — it opens only when its guardians fall');b.bot.push(['form',form],['R','x>',x0+60],['clear',W],['','t',1.3],['R','x>',x0+W+150])}
 /* hazard gauntlet behind a Gold Catalyst: the hard way is a form for every strip, the golden way is a straight run */
-function GAUNT(b,strips,q){const x0=b.x;b.ground(300);b.add('gcat',x0+130,b.gy-72,30,30,{q,dur:12});b.hint(x0-40,'A Gold Catalyst — it wakes for those who gathered '+q+' fragments here');b.bot.push(['R','x>',x0+210]);
-  strips.forEach((s,i)=>{const xs=b.x;b.ground(450);b.haz(s[0],xs,260);if(i%2===0)b.en(i%4?'shade':'wisp',xs+290,xs+400);if(i===1)b.frag(xs+117,b.gy-42);
+function GAUNT(b,strips){const x0=b.x,d=b.d;b.ground(300);b.add('gcat',x0+130,b.gy-72,30,30,{q:-1,dur:12});b.hint(x0-40,'A Gold Catalyst — it wakes for those who gathered enough fragments on this run');b.bot.push(['R','x>',x0+210]);
+  strips.forEach((s,i)=>{const xs=b.x;b.ground(450);b.haz(s[0],xs,260);if(d||i%2===0)b.en(i%4?'shade':'wisp',xs+290,xs+390);if(d>1)b.en('spit',xs+418,xs+418);if(i===1)b.frag(xs+117,b.gy-42);
     b.bot.push(['form',s[1]],['R','x>',xs+190],['clear',260],['R','x>',xs+300])});b.ground(120)}
 const COMBO={
 frozen(b){const gy=b.gy;b.ground(300);const xs=b.x;b.add('g',xs,gy+160,340,900);b.add('pool',xs,gy+8,340,152,{dry:1,fill:0});b.x=xs+340;b.step(-62);b.ground(300);b.hint(xs-300,'A dry basin. Water fills it. Ice holds it');
@@ -284,6 +293,9 @@ lamp(b){const x0=b.x,gy=b.gy,ib=b.id(),ig=b.id();b.ground(800);b.add('sw',x0+150
   b.bot.push(['form','electric'],['R','x>',x0+135],['tap'],['','t',.8],['form','crystal'],['R','x>',x0+250],['tap'],['','t',1.2],['R','x>',x0+680])},
 doors(b){const x0=b.x;b.ground(900);b.bar('bars',x0+250,26);b.bar('grate',x0+450,40);b.bar('veil',x0+650,40);b.hint(x0,'Three doors, three natures');
   b.bot.push(['form','acid'],['R','x>',x0+185],['tap'],['','t',1.1],['R','x>',x0+385],['form','powder'],['tap'],['R','x>',x0+530],['form','phantom'],['','t',.7],['R','x>',x0+590],['tap'],['R','x>',x0+780])},
+kiln(b){const gy=b.gy,id=b.id();b.ground(300);const xs=b.x;b.add('g',xs,gy+200,320,900);b.add('pool',xs,gy+8,320,192);b.add('g',xs-60,TOP,270,gy-46-TOP,{slick:1});b.x=xs+320;b.step(-62);b.ground(620);
+  b.add('torch',xs+570,b.gy-130,20,30,{to:id});b.bar('gate',xs+720,26,{id});b.hint(xs-300,'Ice carries you over. Fire wakes the gate — but flame and ice are poor neighbours');
+  b.bot.push(['form','ice'],['R','x>',xs-70],['tap'],['R','x>',xs+245],['RJ','x>',xs+350],['R','x>',xs+545],['form','fire'],['','t',.3],['tap'],['','t',1.4],['R','x>',xs+820])},
 stair(b){const x0=b.x,gy=b.gy;b.ground(300);b.add('soil',x0+200,gy-10,90,10,{dry:1,grow:[[x0+200,gy-70,90,12,1],[x0+200,gy-140,90,12,1]]});b.step(-150);b.ground(260);b.step(-230);b.ground(300);
   b.hint(x0,'Parched soil. Water wakes it, Earth raises it — and the last wall wants a climber');
   b.bot.push(['form','water'],['R','x>',x0+228],['tap'],['','t',.5],['form','earth'],['','t',.3],['tap'],['','t',.5],['J','t',.45],['','g'],['J','t',.45],['','g'],['RJ','x>',x0+320],['form','sticky'],['R','x>',x0+528],['RU','x>',x0+590],['R','x>',x0+640])}};
@@ -291,21 +303,24 @@ stair(b){const x0=b.x,gy=b.gy;b.ground(300);b.add('soil',x0+200,gy-10,90,10,{dry
 function finishLevel(b,R){b.level();const ex=b.x;b.ground(520);b.add('g',ex+120,b.gy-82,90,12,{ow:1,k:'leaf'});b.add('frag',ex+152,b.gy-132,26,26,{n:'x'});
   b.add('exit',ex+400,b.gy-120,60,120);b.bot.push(['R','x>',ex+395]);let nf=0;
   const zones=(b.zones||[]).map(z=>({x:z[0],th:z[1]?ZONE[z[1]][0]:'convergence',name:z[1]?ZONE[z[1]][1]:'The Threshold',sub:z[1]?EL[z[1]].name+' Realm':'Gold waits for the worthy',hue:z[1]?ZONE[z[1]][2]:R.hue}));
+  /* a Gold Catalyst asks for a share of the fragments that come before it: 60% / 80% / 95% by difficulty */
+  for(const o of b.o)if(o.t==='gcat'&&o.q<0){let n=0;for(const f of b.o)if(f.t==='frag'&&f.x<o.x)n++;o.q=Math.max(1,Math.round(n*[.6,.8,.95][b.d]))}
   for(const o of b.o){if(o.t==='frag'){o.id=R.id+':'+o.n;nf++}else if(o.t==='g'&&zones.length){let z=null;for(const q of zones)if(q.x<=o.x+1)z=q;if(z){o.zh=z.hue;o.zt=z.th}}}
   return{R,id:R.id,name:R.name,els:R.els,hue:R.hue,tut:R.tut,nf,zones,W:b.x,o:b.o,cps:b.cps,hints:b.hints,bot:b.bot,mood:48+(R.i%7)*3}}
-function buildAwakening(){const b=Builder();b.cp();b.ground(500);b.hint(20,'A / D or the arrow keys to move');b.hint(300,'W, Up or Space to jump');
+function buildAwakening(d){const b=Builder(d);b.cp();b.ground(500);b.hint(20,'A / D or the arrow keys to move');b.hint(300,'W, Up or Space to jump');
   b.step(-70);b.ground(220);b.gap(120);b.ground(260);b.gy=GY;b.ground(1000);b.hint(760,'Hold jump longer to leap farther');
   b.frag(596,GY-180);b.frag(767,GY-150);b.add('spike',1300,GY-16,54,16);b.frag(1314,GY-112);b.hint(1110,'Some things wound. You carry three lights of life');
-  b.add('mem',1480,GY-152,30,30,{id:'awakening'});b.en('wisp',1630,1690);b.hint(1440,'Shadow wisps drift here. Unformed, you can only leap over them');b.en('wisp',1900,1960);b.frag(1932,GY-122);
+  b.add('mem',1480,GY-152,30,30,{id:'awakening'});b.en(d>1?'shade':'wisp',1630,1690);b.hint(1440,'Shadow wisps drift here. Unformed, you can only leap over them');b.en('wisp',1900,1960);b.frag(1932,GY-122);
   b.cp();b.ground(500);b.hint(2100,'Monuments remember you. R returns you to the last one · the ◆ fragments are worth gathering');
   b.bot.push(['R','x>',440],['RJ','x>',520],['R','x>',662],['RJ','x>',850],['R','x>',1236],['RJ','x>',1400],['R','x>',1560],['RJ','x>',1790],['R','x>',1830],['RJ','x>',2060],['R','x>',2300]);return b}
 /* a tutorial path: discover four elements in turn, then prove each one, then a golden finale */
-function buildPath(n){const els=PATHS[n-1][1],b=Builder(),Z=[];b.cp();b.ground(480);b.add('g',250,GY-70,90,12,{ow:1,k:'leaf'});b.frag(282,GY-160);b.hint(20,'Four catalysts wait along this path');b.bot.push(['R','x>',300]);
+function buildPath(n,d){const els=PATHS[n-1][1],b=Builder(d),Z=[];b.cp();b.ground(480);b.add('g',250,GY-70,90,12,{ow:1,k:'leaf'});b.frag(282,GY-160);b.hint(20,'Four catalysts wait along this path');b.bot.push(['R','x>',300]);
   els.forEach((e,k)=>{Z.push([b.x,e]);b.cp();const x0=b.x;b.ground(640);if(k%2)b.add('mem',x0+250,GY-152,30,30,{id:MEMZ[n-1][k>>1]});b.add('cat',x0+520,GY-72,30,30,{e});b.hint(x0+60,'A catalyst stirs ahead');
+    if(d){b.foes(x0,[['wisp',190,330],['spit',410,410,2]]);b.bot.push(['form',e],['clear',470])}
     b.bot.push(['R','x>',x0+600],['','t',.3]);SEG[e](b,1);if(RES[e])RES[e](b);b.level()});
-  els.forEach(e=>{Z.push([b.x,e]);b.cp();b.ground(220);SEG[e](b,2);GUARD(b,e);b.level()});
+  els.forEach(e=>{Z.push([b.x,e]);b.cp();LEAD(b,e);SEG[e](b,2);b.cp();GUARD(b,e);b.level()});
   Z.push([b.x,null]);b.cp();FINALE(b,els[3],6);b.zones=Z;return b}
-function buildExp(n){const b=Builder();b.cp();b.ground(520);
+function buildExp(n,d){const b=Builder(d);b.cp();b.ground(520);
   if(n===1){b.en('wisp',260,400);b.frag(452,GY-100);b.bot.push(['form','fire'],['clear',430],['R','x>',470]);
     b.cp();NEST(b,[['wisp',120,260],['shade',300,460],['wisp',380,520]],'fire',560);
     b.cp();COMBO.stair(b);b.frag(b.x-150,b.gy-42);b.level();
@@ -332,17 +347,41 @@ function buildExp(n){const b=Builder();b.cp();b.ground(520);
     b.cp();GAUNT(b,[['arc','electric'],['spike','metal'],['frost','ice'],['bramble','earth'],['flame','fire']],5);
     b.cp();NEST(b,[['sent',140,380],['spit',430,430],['spit',500,500],['shade',180,360]],'crystal',560)}
   return b}
-function buildConvergence(){const b=Builder();b.cp();b.ground(600);b.hint(20,'Sixteen trials. Within each field only one element answers');b.bot.push(['R','x>',300]);
-  STD.forEach(e=>{b.cp();const fx=b.x;b.ground(220);SEG[e](b,2);b.add('field',fx+140,TOP,b.x-fx-140,1300,{e});b.level();const sx=b.x;b.ground(280);
-    b.add('sigil',sx+110,b.gy-100,44,44,{e});b.bot.push(['R','x>',sx+190])});return b}
-function buildAscension(){const b=Builder(),gy=GY;b.cp();b.ground(700);b.hint(20,'Come as you began. Only the unformed may cross the Pale Veil');b.bar('nveil',420,40);
+/* The Convergence: for each path, four single-element trials (mastery), then a confluence where all four must work together;
+   last, four chambers that braid elements from different paths */
+function buildConvergence(d){const b=Builder(d);b.cp();b.ground(600);b.hint(20,'Sixteen trials, then the confluences. Each field silences every form but its own');b.bot.push(['R','x>',300]);
+  const field=(fx,es)=>b.add('field',fx+140,TOP,b.x-fx-140,1300,{es});
+  PATHS.forEach((p,k)=>{
+    p[1].forEach(e=>{b.cp();const fx=b.x;b.ground(220);SEG[e](b,2);field(fx,[e]);b.level();const sx=b.x;b.ground(280);b.add('sigil',sx+110,b.gy-100,44,44,{e});b.bot.push(['R','x>',sx+190])});
+    b.cp();const fx=b.x;b.ground(260);b.hint(fx-100,'A confluence — four forms answer here. You will need them all');
+    for(const e of p[1]){SEG[e](b,1);b.level()}
+    NEST(b,[['shade',140,320],['spit',400,400],['wisp',200,430]],['fire','spiky','earth','phantom'][k],520);b.frag(b.x-70,b.gy-42);field(fx,p[1]);b.ground(240);b.bot.push(['R','x>',b.x-150])});
+  for(const c of[['frozen',['water','ice']],['lamp',['electric','crystal']],['doors',['acid','powder','phantom']],['stair',['water','earth','sticky']],['kiln',['ice','fire']]]){
+    b.cp();const fx=b.x;b.ground(240);COMBO[c[0]](b);field(fx,c[1]);b.level();b.ground(240);b.frag(b.x-130,b.gy-42);b.bot.push(['R','x>',b.x-150])}
+  b.cp();NEST(b,[['sent',160,400],['shade',220,440],['spit',470,470],['wisp',140,300]],'crystal',560);return b}
+/* The Golden Ascension: every element, braided, with no field to narrow the choice */
+function buildAscension(d){const b=Builder(d),gy=GY;b.cp();b.ground(700);b.hint(20,'Come as you began. Only the unformed may cross the Pale Veil');b.bar('nveil',420,40);
   b.bot.push(['form','normal'],['R','x>',560]);
-  b.cp();COMBO.frozen(b);b.level();b.cp();COMBO.lamp(b);b.cp();COMBO.doors(b);
-  for(const s of[['earth',1],['sticky',2],['air',1],['magnetic',1],['psychic',1],['spiky',1],['rock',1],['metal',2],['fire',2]]){b.cp();SEG[s[0]](b,s[1]);b.level()}
+  b.cp();COMBO.frozen(b);b.frag(b.x-120,b.gy-42);b.level();
+  b.cp();NEST(b,[['wisp',120,300],['shade',260,440],['spit',470,470]],'fire',560);
+  b.cp();COMBO.lamp(b);b.frag(b.x-70,b.gy-42);
+  b.cp();COMBO.doors(b);b.frag(b.x-70,b.gy-42);
+  b.cp();COMBO.stair(b);b.frag(b.x-150,b.gy-42);b.level();
+  b.cp();COMBO.kiln(b);b.frag(b.x-70,b.gy-42);b.level();
+  b.cp();SEG.sticky(b,2);b.level();
+  b.cp();SEG.air(b,2);GUARD(b,'air','shade');b.level();
+  b.cp();SEG.magnetic(b,2);b.frag(b.x-140,b.gy-42);b.level();
+  b.cp();NEST(b,[['sent',160,420],['spit',470,470],['shade',200,400]],'psychic',560);
+  b.cp();SEG.psychic(b,2);SEG.spiky(b,2);b.frag(b.x-60,b.gy-42);
+  b.cp();SEG.rock(b,2);GUARD(b,'rock','shade');
+  b.cp();SEG.metal(b,2);
+  b.cp();GAUNT(b,[['flame','fire'],['sludge','acid'],['frost','ice'],['arc','electric'],['spike','magnetic'],['bramble','earth']],5);
+  b.cp();NEST(b,[['sent',140,360],['sent',300,520],['spit',570,570],['shade',200,460]],'crystal',640);
+  b.cp();SEG.fire(b,2);
   b.cp();{const x0=b.x;b.ground(700);b.add('gcat',x0+420,gy-72,30,30,{q:0,dur:25,fin:1});b.hint(x0,'From nothing, all things became possible');b.bot.push(['R','x>',x0+520],['','t',.6]);
     const x1=b.x;b.ground(1500);b.add('lava',x1+150,gy-18,1100,18);b.haz('arc',x1+150,1100);b.hint(x1-240,'Walk where nothing else may walk');b.bot.push(['R','x>',x1+1350])}
   return b}
-function buildLevel(i){const R=REALMS[i];return finishLevel(i===0?buildAwakening():i<=4?buildPath(i):i<=7?buildExp(i-4):i===8?buildConvergence():buildAscension(),R)}
+function buildLevel(i,d){const R=REALMS[i];d=d|0;return finishLevel(i===0?buildAwakening(d):i<=4?buildPath(i,d):i<=7?buildExp(i-4,d):i===8?buildConvergence(d):buildAscension(d),R)}
 function buildHub(){const b=Builder();b.ground(380+REALMS.length*200+320);REALMS.forEach(r=>b.add('portal',380+r.i*200,GY-130,64,130,{ri:r.i}));
   return{R:null,id:'hub',name:'The Eternal Sanctuary',els:null,hue:'#c4c8d4',tut:true,nf:0,zones:[],W:b.x,o:b.o,cps:[{x:clamp(S.hubx||412,100,b.x-100),y:GY}],
     hints:[[0,'Stand in a portal and press F to enter']],bot:[],mood:66}}
@@ -360,22 +399,22 @@ function isSolid(o){const p=G.p;switch(o.t){case'g':case'lift':case'mplat':case'
 function solids(){const a=[];for(const o of G.o)if(isSolid(o))a.push(o);return a}
 function inBar(t){const p=G.p;for(const o of G.o)if(o.t===t&&ov(p,o))return true;return false}
 
-function startLevel(L,ck){const c=L.cps[ck],hub=L.id==='hub',mh=maxHp();let fg=0;for(const o of L.o){if(o.t==='mplat'){o.hx=o.x;o.hy=o.y}else if(o.t==='frag'&&S.frag[o.id])fg++}
-  G={L,o:L.o,ck,maxhp:mh,fg,p:{x:c.x-15,y:c.y-30,w:30,h:30,vx:0,vy:0,g:0,cy:0,jb:0,f:1,hp:mh,inv:0,cd:0,acd:0,form:!hub&&S.el[S.cur]&&S.cur!=='gold'?S.cur:'normal',wall:0,ceil:0,aj:0,surge:0,dsp:0,ph:0,fort:0,
+function startLevel(L,ck,d){const c=L.cps[ck],hub=L.id==='hub',mh=maxHp(),got={};let fg=0;for(const o of L.o){if(o.t==='mplat'){o.hx=o.x;o.hy=o.y}else if(o.t==='frag'&&ck>0&&o.x<c.x&&S.frag[o.id]){got[o.id]=1;fg++}}
+  G={L,o:L.o,ck,d:d|0,got,maxhp:mh,fg,p:{x:c.x-15,y:c.y-30,w:30,h:30,vx:0,vy:0,g:0,cy:0,jb:0,f:1,hp:mh,inv:0,cd:0,acd:0,form:!hub&&S.el[S.cur]&&S.cur!=='gold'?S.cur:'normal',wall:0,ceil:0,aj:0,surge:0,dsp:0,ph:0,fort:0,
       gold:0,gmax:1,dash:0,dashN:0,scat:0,scatI:0,kd:-1,safe:null,lock:0,inW:null,vent:null,vcd:0,nocut:0},
     cam:{x:clamp(c.x-VW*.45,0,Math.max(0,L.W-VW)),y:clamp(c.y-430,TOP,220)},look:0,tf:null,ban:null,note:'',nt:0,fl:0,fc:'#ffffff',sh:0,field:null,time:0,wheel:null,rays:[],shots:[],eb:[],res:null,zi:-2,zf:0,ign:null};
   PT=[];RG=[];scr=null;stack=[];clearKeys();setMood(L.mood)}
-function enterRealm(i,resume){const R=REALMS[i],L=buildLevel(i);let ck=0;
-  if(resume&&S.realm===R.id)ck=S.ck;else if(!S.done[R.id]&&S.far[R.id])ck=S.far[R.id];
-  ck=clamp(ck|0,0,L.cps.length-1);S.started=true;S.realm=R.id;S.ck=ck;S.hubx=412+i*200;startLevel(L,ck);banner(R.name.toUpperCase(),R.sub,R.hue,3.4);save()}
+function enterRealm(i,resume,d){d=clamp(d|0,0,2);const R=REALMS[i],L=buildLevel(i,d);let ck=0;
+  if(resume&&S.realm===R.id)ck=S.ck;else if(!S.done[R.id]&&!d&&S.far[R.id])ck=S.far[R.id];
+  ck=clamp(ck|0,0,L.cps.length-1);S.started=true;S.realm=R.id;S.rd=d;S.ck=ck;S.hubx=412+i*200;startLevel(L,ck,d);banner(R.name.toUpperCase(),(d?TIER[d]+'  ·  ':'')+R.sub,R.hue,3.4);save()}
 function enterHub(){S.realm=null;S.ck=0;startLevel(buildHub(),0);const nw=STD.filter(e=>S.el[e]&&!S.wh[e]);if(nw.length){G.ign={list:nw,t:-.6,f:{}};nw.forEach(e=>S.wh[e]=1)}save()}
 function setForm(f){const p=G.p;p.form=f;p.dsp=0;p.ph=0;p.fort=0;p.wall=0;p.ceil=0;p.dash=0;S.cur=f}
 function canSwitch(){const p=G.p;if(G.tf||p.vent)return false;for(const o of G.o)if((o.t==='grate'||o.t==='veil'||o.t==='nveil')&&ov(p,o))return false;return true}
 function equip(f){const p=G.p;if(!S.el[f]||f==='gold')return false;if(p.form===f)return true;if(G.L.id==='hub'){note('The Sanctuary holds you unformed — your forms wait beyond the portals');deny();return false}
   if(!canSwitch()){deny();return false}
-  if(G.field&&f!=='normal'&&f!==G.field){note('This field answers only to '+EL[G.field].name);deny();return false}
+  if(!fieldOK(f)){note('This field answers only to '+G.field.map(e=>EL[e].name).join(', '));deny();return false}
   setForm(f);const c=EL[f].c;ring(p.x+15,p.y+15,c,6);em(p.x+15,p.y+15,c,24,{sp:130});sfx('equip');return true}
-function cycleForm(){const p=G.p,i=FORMS.indexOf(p.form);for(let k=1;k<=FORMS.length;k++){const f=FORMS[(i+k)%FORMS.length];if(S.el[f]&&(!G.field||f==='normal'||f===G.field)){if(f!==p.form)equip(f);return}}}
+function cycleForm(){const p=G.p,i=FORMS.indexOf(p.form);for(let k=1;k<=FORMS.length;k++){const f=FORMS[(i+k)%FORMS.length];if(S.el[f]&&fieldOK(f)){if(f!==p.form)equip(f);return}}}
 
 /* damage: zone hazards always throw you back the way you came, so they cannot be waded through on spare lives */
 function hurt(n,zone){const p=G.p;if(p.inv>0||G.tf||p.gold>0||p.scatI>0||(p.dash>0&&!zone))return;
@@ -434,7 +473,7 @@ function power(sec){const p=G.p,f=p.form;if(G.tf||p.vent)return;if(f==='normal')
 
 function moveSolid(o,dx,dy){if(!dx&&!dy)return;const p=G.p,ride=p.g&&Math.abs(p.y+p.h-o.y)<3&&p.x+p.w>o.x&&p.x<o.x+o.w;o.x+=dx;o.y+=dy;
   if(ride){p.x+=dx;p.y=o.y-p.h}else if(ov(p,o)){if(dy<0)p.y=o.y-p.h;else if(dy>0)p.y=o.y+o.h;else if(dx>0)p.x=o.x+o.w;else p.x=o.x-p.w}}
-function stepWorld(dt){const p=G.p,pcx=p.x+15,pcy=p.y+15;let rm=0,wards=null;
+function stepWorld(dt){const p=G.p,pcx=p.x+15,pcy=p.y+15,dm=[1,1.15,1.3][G.d];let rm=0,wards=null;
   for(const o of G.o){switch(o.t){
   case'vine':case'bars':case'memb':case'crack':if(o.d>0){const was=o.d;o.d+=dt*(o.t==='vine'||o.t==='bars'?1.15:3);if(was<1&&o.d>=1)sfx('break');if(o.d>1.6){o.rm=1;rm=1}}break;
   case'gate':if(o.open&&o.op<1)o.op=Math.min(1,o.op+dt*1.3);if(o.ward&&!o.open){if(!wards){wards={};for(const e of G.o)if(e.t==='en'&&!e.dead&&e.ward)wards[e.ward]=1}if(!wards[o.id]){o.open=1;sfx('open');G.sh=.2}}break;
@@ -449,9 +488,9 @@ function stepWorld(dt){const p=G.p,pcx=p.x+15,pcy=p.y+15;let rm=0,wards=null;
   case'en':{if(o.dead){o.rm=1;rm=1;em(o.x+o.w/2,o.y+o.h/2,o.k==='sent'?'#ff4060':'#b070ff',22,{sp:150});break}if(o.fl>0)o.fl-=dt;if(o.stun>0)o.stun-=dt;if(o.frz>0)o.frz-=dt;
     if(o.dot>0){o.dot-=dt;if(o.dot<=0){hitEnemy(o,1);if(o.dead)break}}
     if(o.stun>0||o.frz>0)break;const ex=o.x+o.w/2;
-    if(o.k==='shade'&&pcx>o.x0-90&&pcx<o.x1+o.w+90&&Math.abs(pcy-o.y)<200&&!(p.ph>0||p.dsp>0)){o.dir=pcx>ex?1:-1;o.x=clamp(o.x+o.dir*78*dt,o.x0,o.x1)}
-    else if(o.k==='spit'){o.dir=pcx>ex?1:-1;o.ft-=dt;const dx=pcx-ex,dy=pcy-(o.y+o.h/2),d=Math.hypot(dx,dy);if(o.ft<=0&&d<430&&Math.abs(dy)<150&&d>30){o.ft=2.4;G.eb.push({x:ex,y:o.y+o.h/2,vx:dx/d*230,vy:dy/d*230,life:2.4});tone(240,.18,'square',.03,120)}else if(o.ft<=0)o.ft=.3}
-    else{o.x+=o.dir*(o.k==='sent'?85:55)*dt;if(o.x>o.x1){o.x=o.x1;o.dir=-1}else if(o.x<o.x0){o.x=o.x0;o.dir=1}}
+    if(o.k==='shade'&&pcx>o.x0-90&&pcx<o.x1+o.w+90&&Math.abs(pcy-o.y)<200&&!(p.ph>0||p.dsp>0)){o.dir=pcx>ex?1:-1;o.x=clamp(o.x+o.dir*84*dm*dt,o.x0,o.x1)}
+    else if(o.k==='spit'){o.dir=pcx>ex?1:-1;o.ft-=dt;const dx=pcx-ex,dy=pcy-(o.y+o.h/2),d=Math.hypot(dx,dy);if(o.ft<=0&&d<430&&Math.abs(dy)<150&&d>30){const bs=[230,260,290][G.d];o.ft=[2.4,1.9,1.5][G.d];G.eb.push({x:ex,y:o.y+o.h/2,vx:dx/d*bs,vy:dy/d*bs,life:2.4});tone(240,.18,'square',.03,120)}else if(o.ft<=0)o.ft=.3}
+    else{o.x+=o.dir*(o.k==='sent'?85:60)*dm*dt;if(o.x>o.x1){o.x=o.x1;o.dir=-1}else if(o.x<o.x0){o.x=o.x0;o.dir=1}}
     o.y=o.by+Math.sin(G.time*2.2+o.x0)*7}break}}
   if(rm)G.o=G.o.filter(o=>!o.rm)}
 /* player shots and wisp bolts */
@@ -478,8 +517,8 @@ function stepPlayer(dt){const p=G.p,L=G.L;
   const e=EL[p.form];let ax=(K.R?1:0)-(K.L?1:0);const jh=K.J||K.U;if(p.lock>0){p.lock-=dt;ax=0}else if(ax)p.f=ax;
   let cx=p.x+15,cy=p.y+15,pool=null,wind=0,up=0,field=null;
   for(const o of G.o){const t=o.t;if(t!=='pool'&&t!=='wind'&&t!=='updraft'&&t!=='field')continue;if(cx<o.x||cx>o.x+o.w||cy<o.y||cy>o.y+o.h)continue;
-    if(t==='pool'){if(!o.dry)pool=o}else if(t==='wind')wind=o.f;else if(t==='updraft')up=1;else field=o.e}
-  G.field=field;if(field&&p.form!==field&&p.form!=='normal'&&S.el[field]){setForm(field);ring(cx,cy,EL[field].c,8);note('This field answers only to '+EL[field].name)}
+    if(t==='pool'){if(!o.dry)pool=o}else if(t==='wind')wind=o.f;else if(t==='updraft')up=1;else field=o.es}
+  G.field=field;if(field&&!fieldOK(p.form)){const f=field.find(e=>S.el[e])||'normal';setForm(f);ring(cx,cy,EL[f].c,8);note('This field answers only to '+field.map(e=>EL[e].name).join(', '))}
   let sol=solids();if(hitSolid(p,sol))unstick(p,sol);
   p.inW=pool;p.jb-=dt;p.cy=p.g?.1:p.cy-dt;if(p.g){p.aj=0;p.surge=0}
   const dsp=p.dsp>0,spd=240*(e.sp||1)*(dsp?.85:1),wasGr=p.g;
@@ -514,8 +553,8 @@ function stepPlayer(dt){const p=G.p,L=G.L;
       if(p.form==='spiky'&&o.k!=='sent'){if(o.k==='wisp')hitEnemy(o,9);else{if(o.tn!==1){hitEnemy(o,1,'stun',p.f)}}break}
       if(p.form==='spiky'){o.stun=2.5;sfx('ehit');break}if(p.form==='psychic'&&o.k==='sent')break;if(!immune('en'))hurt(1)}break;
   case'cat':if(!S.el[o.e]&&!G.tf&&Math.abs(cx-o.x-15)<24){G.tf={t:0,e:o.e,o};tone(150,1.4,'sine',.08,620)}break;
-  case'gcat':if(!o.used&&Math.abs(cx-o.x-15)<24){const need=o.q-fragGot(L.id);if(need<=0)goldOn(o);else if(G.nt<=0)note('The Gold Catalyst sleeps — recover '+need+' more fragment'+(need>1?'s':'')+' here')}break;
-  case'frag':if(!S.frag[o.id]&&ov(p,o)){S.frag[o.id]=1;G.fg++;save();em(o.x+13,o.y+13,'#9ff',26,{sp:110});ring(o.x+13,o.y+13,'#9ff',4);sfx('frag');note('Elemental Fragment  '+G.fg+' / '+L.nf,1.8)}break;
+  case'gcat':if(!o.used&&Math.abs(cx-o.x-15)<24){const need=o.q-G.fg;if(need<=0)goldOn(o);else if(G.nt<=0)note('The Gold Catalyst sleeps — gather '+need+' more fragment'+(need>1?'s':'')+' on this run')}break;
+  case'frag':if(!G.got[o.id]&&ov(p,o)){G.got[o.id]=1;G.fg++;if(!S.frag[o.id]){S.frag[o.id]=1;save()}em(o.x+13,o.y+13,'#9ff',26,{sp:110});ring(o.x+13,o.y+13,'#9ff',4);sfx('frag');note('Elemental Fragment  '+G.fg+' / '+L.nf,1.8)}break;
   case'mem':if(!S.mem[o.id]&&ov(p,o)){S.mem[o.id]=1;save();em(o.x+15,o.y+15,'#ffe9a8',30,{sp:90});sfx('mem');banner('ANCIENT MEMORY',MEM[o.id],'#ffe9a8',6)}break;
   case'sigil':if(!o.on&&Math.abs(cx-o.x-22)<26){o.on=1;if(S.el[o.e]&&S.el[o.e]<3){S.el[o.e]=3;save();const c=EL[o.e].c;banner(EL[o.e].name.toUpperCase()+' MASTERED',EL[o.e].up,c,4.5);ring(cx,cy,c,10);ring(cx,cy,'#ffffff',40);em(cx,cy,c,50,{sp:200});G.fl=.6;G.fc=c;sfx('master')}}break;
   case'vent':if(p.dsp>0&&p.vcd<=0&&!p.vent){const A={x:o.x,y:o.y,w:40,h:40},B={x:o.x2,y:o.y2,w:40,h:40},a=ov(p,A),bb=!a&&ov(p,B);
@@ -530,9 +569,11 @@ function finishTf(){const e=G.tf.e,p=G.p,c=EL[e].c;S.el[e]=1;G.tf.o.rm=1;G.o=G.o
   ring(p.x+15,p.y+15,c,10);ring(p.x+15,p.y+15,EL[e].c2,40);ring(p.x+15,p.y+15,c,80);em(p.x+15,p.y+15,c,70,{sp:240});G.fl=.9;G.fc=c;G.sh=.5;
   banner('ELEMENT DISCOVERED: '+EL[e].name.toUpperCase(),EL[e].line,c,4.5);tone(523,1,'sine',.07,1046);tone(784,1.2,'triangle',.05,1568);save()}
 function completeRealm(){const R=G.L.R,first=!S.done[R.id],hp0=maxHp();S.done[R.id]=1;const up=[];if(R.els)for(const e of R.els)if(S.el[e]===1){S.el[e]=2;up.push(e)}
-  S.realm=null;S.ck=0;delete S.far[R.id];G.res={first,up,life:maxHp()>hp0};const end=R.id==='ascension'&&!S.ended;if(end)S.ended=true;save();
+  S.diff[R.id]=(S.diff[R.id]|0)|1<<G.d;S.realm=null;S.ck=0;delete S.far[R.id];G.res={first,up,life:maxHp()>hp0};const end=R.id==='ascension'&&!S.ended;if(end)S.ended=true;save();
   stack=[];scr=end?'ending':'done';ui={i:0,t:0};clearKeys();sfx('portal')}
-function interact(){const p=G.p;for(const o of G.o)if(o.t==='portal'&&ov(p,o)){if(unlocked(o.ri)){sfx('portal');enterRealm(o.ri,false)}else{note(lockMsg(o.ri));deny()}return}}
+/* first visit goes straight in; once a level is cleared you choose a difficulty */
+function travel(i){if(!unlocked(i)){deny();return}if(S.done[REALMS[i].id]){openScr('diff');ui.ri=i;ui.i=nextTier(i)}else{sfx('portal');enterRealm(i,false,0)}}
+function interact(){const p=G.p;for(const o of G.o)if(o.t==='portal'&&ov(p,o)){if(unlocked(o.ri))travel(o.ri);else{note(lockMsg(o.ri));deny()}return}}
 function timers(dt){const p=G.p;p.inv=Math.max(0,p.inv-dt);p.vcd=Math.max(0,p.vcd-dt);p.nocut=Math.max(0,p.nocut-dt);p.acd=Math.max(0,p.acd-dt);p.scat=Math.max(0,p.scat-dt);p.scatI=Math.max(0,p.scatI-dt);
   if(!(p.dsp>0||p.ph>0||p.fort>0))p.cd=Math.max(0,p.cd-dt);
   if(p.dsp>0){p.dsp-=dt;if(p.dsp<=0){if(inBar('grate'))p.dsp=.05;else{p.dsp=0;p.cd=.8}}}
@@ -656,8 +697,9 @@ vent(o){X.save();X.strokeStyle='rgba(232,194,103,.3)';X.setLineDash([3,9]);X.lin
 beam(o){if(!o.on){X.fillStyle='rgba(120,130,160,.06)';X.fillRect(o.x+14,vr(o)[0],8,vr(o)[1]-vr(o)[0]);return}const r=vr(o);X.save();X.globalCompositeOperation='lighter';X.fillStyle='rgba(255,255,230,'+(.16+.05*Math.sin(T*4))+')';X.fillRect(o.x,r[0],o.w,r[1]-r[0]);X.fillStyle='rgba(255,255,255,.3)';X.fillRect(o.x+13,r[0],10,r[1]-r[0]);X.restore()},
 wind(o){X.save();X.strokeStyle='rgba(200,225,255,.3)';X.lineWidth=2;X.beginPath();for(let i=0;i<12;i++){const y=o.y+18+i*((o.h-30)/11),x=o.x+o.w-((T*430+i*137)%o.w);X.moveTo(x,y);X.lineTo(Math.max(o.x,x-46),y)}X.stroke();X.restore()},
 updraft(o){const r=vr(o);X.save();X.fillStyle='rgba(200,235,255,.05)';X.fillRect(o.x,r[0],o.w,r[1]-r[0]);X.strokeStyle='rgba(200,235,255,.35)';X.lineWidth=2;X.beginPath();for(let i=0;i<7;i++){const x=o.x+8+i*((o.w-16)/6),y=o.y+o.h-((T*260+i*83)%o.h);X.moveTo(x,y);X.lineTo(x,Math.max(o.y,y-40))}X.stroke();X.restore()},
-field(o){const c=EL[o.e].c,r=vr(o);X.save();X.globalCompositeOperation='lighter';X.fillStyle=rgba(c,.035);X.fillRect(o.x,r[0],o.w,r[1]-r[0]);for(const x of[o.x,o.x+o.w-6]){X.fillStyle=rgba(c,.3+.12*Math.sin(T*3));X.fillRect(x,r[0],6,r[1]-r[0])}X.restore();
-  X.save();txt(EL[o.e].name.toUpperCase()+' TRIAL',o.x+70,G.cam.y+70,'bold 13px Georgia',c,'left',8);X.restore()},
+field(o){const one=o.es.length===1,c=EL[o.es[0]].c,r=vr(o);X.save();X.globalCompositeOperation='lighter';X.fillStyle=rgba(c,.035);X.fillRect(o.x,r[0],o.w,r[1]-r[0]);
+  for(const x of[o.x,o.x+o.w-6])o.es.forEach((e,i)=>{const h=(r[1]-r[0])/o.es.length;X.fillStyle=rgba(EL[e].c,.3+.12*Math.sin(T*3+i));X.fillRect(x,r[0]+i*h,6,h)});X.restore();
+  X.save();txt(one?EL[o.es[0]].name.toUpperCase()+' TRIAL':'CONFLUENCE  ·  '+o.es.map(e=>EL[e].name).join(' + '),o.x+24,G.cam.y+150,'bold 13px Georgia',one?c:'#ffffff','left',8);X.restore()},
 en(o){const x=o.x+o.w/2,y=o.y+o.h/2,s=o.w/2,fz=o.frz>0,st=o.stun>0,k=o.k,c=fz?'#a8ecff':k==='sent'?'#ff4060':k==='shade'?'#ff5ac8':k==='spit'?'#ffae3a':'#9a5cff';X.save();X.globalCompositeOperation='lighter';glow(x,y,s*2.6,c,.45);X.restore();
   X.save();X.shadowColor=c;X.shadowBlur=12;X.fillStyle=o.fl>0?'#ffffff':fz?'#3a6a80':k==='shade'?'#2a0820':'#150a26';X.beginPath();
   if(k==='sent'){for(let i=0;i<6;i++){const a=i*TAU/6+T*(fz||st?0:.8);X.lineTo(x+Math.cos(a)*s,y+Math.sin(a)*s)}X.closePath()}
@@ -674,16 +716,16 @@ frost(o){X.save();X.globalCompositeOperation='lighter';const g=X.createLinearGra
   X.save();X.strokeStyle='#dff8ff';X.shadowColor='#a8ecff';X.shadowBlur=10;X.lineWidth=1.5;X.beginPath();for(let x=o.x+8;x<o.x+o.w-4;x+=20){X.moveTo(x-5,o.y+o.h);X.lineTo(x,o.y+o.h-14-6*Math.sin(x));X.lineTo(x+5,o.y+o.h)}X.stroke();X.restore();if(Math.random()<.4)em(rnd(o.x,o.x+o.w),o.y+o.h-rnd(0,o.h*.7),'#dff8ff',1,{sp:14,up:-10,l:1})},
 bramble(o){X.save();X.strokeStyle='#2c8a50';X.shadowColor='#ff5a7a';X.shadowBlur=6;X.lineWidth=2.5;X.beginPath();for(let x=o.x;x<o.x+o.w;x+=26){X.moveTo(x,o.y+o.h);X.bezierCurveTo(x+6,o.y-6,x+22,o.y+o.h+4,x+26,o.y+6)}X.stroke();
   X.strokeStyle='#ff7a9a';X.lineWidth=1.5;X.beginPath();for(let x=o.x+6;x<o.x+o.w-4;x+=13){X.moveTo(x,o.y+14+6*Math.sin(x));X.lineTo(x+4,o.y+6+6*Math.sin(x))}X.stroke();X.restore()},
-gcat(o){const x=o.x+15,y=o.y+15+Math.sin(T*2)*5,ready=!o.used&&fragGot(G.L.id)>=o.q,c=o.used?'#6a6040':'#ffd24a';X.save();X.globalCompositeOperation='lighter';glow(x,y,ready?110:46,'#ffd24a',o.used?.12:ready?.8:.3);X.restore();
+gcat(o){const x=o.x+15,y=o.y+15+Math.sin(T*2)*5,ready=!o.used&&G.fg>=o.q,c=o.used?'#6a6040':'#ffd24a';X.save();X.globalCompositeOperation='lighter';glow(x,y,ready?110:46,'#ffd24a',o.used?.12:ready?.8:.3);X.restore();
   X.save();X.translate(x,y);X.strokeStyle=c;X.fillStyle=ready?'#fff6c8':o.used?'#2a2618':'#7a6420';X.shadowColor='#ffd24a';X.shadowBlur=ready?22:4;X.lineWidth=2;X.rotate(ready?T*.9:0);X.beginPath();for(let i=0;i<8;i++){const a=i*TAU/8,r=i%2?8:18;X.lineTo(Math.cos(a)*r,Math.sin(a)*r)}X.closePath();X.fill();X.stroke();X.restore();
-  if(!o.used&&o.q>0){X.save();txt('◆ '+Math.min(fragGot(G.L.id),o.q)+' / '+o.q,x,o.y-22,'bold 13px Georgia',ready?'#fff6c8':'#c8a850',0,ready?10:0);X.restore()}if(ready&&Math.random()<.5)em(x+rnd(-18,18),y+rnd(-18,18),'#ffd24a',1,{up:-30,sp:12})},
+  if(!o.used&&o.q>0){X.save();txt('◆ '+Math.min(G.fg,o.q)+' / '+o.q,x,o.y-22,'bold 13px Georgia',ready?'#fff6c8':'#c8a850',0,ready?10:0);X.restore()}if(ready&&Math.random()<.5)em(x+rnd(-18,18),y+rnd(-18,18),'#ffd24a',1,{up:-30,sp:12})},
 cat(o){if(S.el[o.e])return;const e=EL[o.e],x=o.x+15,y=o.y+15+Math.sin(T*2)*6;X.save();X.globalCompositeOperation='lighter';glow(x,y,o.e==='gold'?120:74,e.c,.85);X.restore();X.save();X.translate(x,y);X.rotate(T);X.shadowColor=e.c;X.shadowBlur=22;X.fillStyle=e.c2;X.beginPath();X.moveTo(0,-17);X.lineTo(11,0);X.lineTo(0,17);X.lineTo(-11,0);X.fill();X.rotate(-T*2.3);X.strokeStyle=e.c;X.lineWidth=2;X.beginPath();X.ellipse(0,0,24,9,0,0,TAU);X.stroke();X.restore();if(Math.random()<.4)em(x+rnd(-16,16),y+rnd(-16,16),e.c,1,{up:-30,sp:10})},
-frag(o){if(S.frag[o.id])return;const x=o.x+13,y=o.y+13+Math.sin(T*2.5)*4;X.save();X.globalCompositeOperation='lighter';glow(x,y,34,'#9ff',.6);X.restore();X.save();X.translate(x,y);X.rotate(T*1.3);X.shadowColor='#9ff';X.shadowBlur=14;X.fillStyle='#cff';X.fillRect(-6,-6,12,12);X.restore()},
+frag(o){if(G.got[o.id])return;const x=o.x+13,y=o.y+13+Math.sin(T*2.5)*4,old=S.frag[o.id];X.save();X.globalCompositeOperation='lighter';glow(x,y,34,'#9ff',old?.3:.6);X.restore();X.save();X.globalAlpha=old?.6:1;X.translate(x,y);X.rotate(T*1.3);X.shadowColor='#9ff';X.shadowBlur=14;X.fillStyle='#cff';X.fillRect(-6,-6,12,12);X.restore()},
 mem(o){const got=S.mem[o.id],x=o.x+15,y=o.y+15;X.save();X.globalCompositeOperation='lighter';glow(x,y,got?26:46,'#ffe9a8',got?.25:.55+.2*Math.sin(T*2));X.restore();X.save();X.strokeStyle=got?'rgba(255,233,168,.4)':'#ffe9a8';X.shadowColor='#ffe9a8';X.shadowBlur=got?0:12;X.lineWidth=2;X.beginPath();X.arc(x,y,11,0,TAU);X.moveTo(x,y-11);X.lineTo(x,y+11);X.moveTo(x-8,y-5);X.lineTo(x+8,y+5);X.stroke();X.restore()},
 sigil(o){const e=EL[o.e],x=o.x+22,y=o.y+22,on=o.on||S.el[o.e]===3;X.save();X.globalCompositeOperation='lighter';glow(x,y,on?80:50,e.c,on?.7:.4+.15*Math.sin(T*3));X.restore();X.save();X.translate(x,y);X.strokeStyle=on?'#fff':e.c;X.shadowColor=e.c;X.shadowBlur=16;X.lineWidth=2.5;X.rotate(T*.6);X.beginPath();for(let i=0;i<3;i++){const a=i*TAU/3;X.moveTo(Math.cos(a)*20,Math.sin(a)*20);X.lineTo(Math.cos(a+TAU/3)*20,Math.sin(a+TAU/3)*20)}X.stroke();X.beginPath();X.arc(0,0,24,0,TAU);X.stroke();X.restore()},
 exit(o){portalFx(o.x+o.w/2,o.y+o.h/2,'#b8ffff',1,54)},
 portal(o){const R=REALMS[o.ri],u=unlocked(o.ri),x=o.x+o.w/2;portalFx(x,o.y+o.h/2+4,R.hue,u,54);X.save();txt(o.ri>=1&&o.ri<=4?'Path '+ROMAN[o.ri-1]:o.ri>=5&&o.ri<=7?'Expedition '+ROMAN[o.ri-5]:'✧',x,o.y-34,'bold 15px Georgia',u?R.hue:'#555a70',0,u?8:0);txt(R.name.replace('The ',''),x,o.y-16,'12px Georgia',u?'#cfd8ee':'#555a70');
-  if(S.done[R.id])txt('✦',x,o.y+o.h/2+10,'20px Georgia','#ffe9a8',0,10);else if(!u)txt('sealed',x,o.y+o.h/2+8,'italic 12px Georgia','#666a80');
+  if(S.done[R.id])for(let d=0;d<3;d++){const on=tierDone(R.id,d);X.fillStyle=on?'#ffe9a8':'rgba(255,255,255,.16)';X.beginPath();X.moveTo(x-14+d*14,o.y+o.h/2-2);X.lineTo(x-8+d*14,o.y+o.h/2+5);X.lineTo(x-14+d*14,o.y+o.h/2+12);X.lineTo(x-20+d*14,o.y+o.h/2+5);X.fill()}else if(!u)txt('sealed',x,o.y+o.h/2+8,'italic 12px Georgia','#666a80');
   if(R.els)R.els.forEach((e,i)=>{X.fillStyle=S.el[e]?EL[e].c:'rgba(255,255,255,.12)';X.beginPath();X.arc(x-18+i*12,GY+18,4,0,TAU);X.fill()});X.restore()}};
 const BACK={beam:1,wind:1,updraft:1,field:1,pool:1,portal:1,exit:1,vent:1};
 /* the Sanctuary wheel: every unlocked element burns at its place; newly won ones ignite when you return */
@@ -764,15 +806,16 @@ function openScr(s){stack.push(scr);scr=s;ui={i:0,t:0};clearKeys();sfx('ui')}
 function goBack(){scr=stack.length?stack.pop():null;ui={i:0,t:0};if(!scr&&!G)scr='main'}
 function toMain(){save();G=null;stack=[];scr='main';ui={i:0,t:0};PT=[];RG=[];setMood(55)}
 function newGame(){const set=S.set;S=defSave();S.set=set;S.started=true;save();enterRealm(0,false)}
-function doContinue(){if(S.realm&&REALM_BY[S.realm])enterRealm(REALM_BY[S.realm].i,true);else enterHub()}
-function pickRealm(i){if(i===REALMS.length){if(S.started)enterHub();else deny();return}if(unlocked(i))enterRealm(i,false);else deny()}
+function doContinue(){if(S.realm&&REALM_BY[S.realm])enterRealm(REALM_BY[S.realm].i,true,S.rd);else enterHub()}
+function pickRealm(i){if(i===REALMS.length){if(S.started)enterHub();else deny();return}travel(i)}
 function nextGoal(){for(const r of REALMS)if(!S.done[r.id])return unlocked(r.i)?r.i:-1;return-1}
 const dots=n=>'●'.repeat(n)+'○'.repeat(4-n);
 function setAdj(k,max){return d=>{S.set[k]=(S.set[k]+(d||1)+max+1)%(max+1);applyVol();save()}}
 function items(){const hub=G&&G.L.id==='hub';switch(scr){
   case'main':return[...(S.started?[['Continue',doContinue]]:[]),['New Game',()=>S.started?openScr('confirm'):newGame()],['The Journey',()=>openScr('realms')],['Elemental Codex',()=>openScr('codex')],['Settings',()=>openScr('settings')]];
   case'confirm':return[['Cancel',goBack],['Erase all progress and begin anew',newGame]];
-  case'pause':return[['Resume',goBack],...(hub?[]:[['Return to last monument',()=>{goBack();respawn(true)}],['Restart realm',()=>{const R=G.L.R;delete S.far[R.id];S.realm=null;enterRealm(R.i,false)}],['Return to Sanctuary',enterHub]]),
+  case'diff':{const R=REALMS[ui.ri],go=d=>()=>{const i=ui.ri;sfx('portal');enterRealm(i,false,d)};return[0,1,2].map(d=>[tierName(R,d)+(tierDone(R.id,d)?'   ✦':''),go(d)]).concat([['Back',goBack]])}
+  case'pause':return[['Resume',goBack],...(hub?[]:[['Return to last monument',()=>{goBack();respawn(true)}],['Restart realm',()=>{const R=G.L.R,d=G.d;delete S.far[R.id];S.realm=null;enterRealm(R.i,false,d)}],['Return to Sanctuary',enterHub]]),
     ['The Journey',()=>openScr('realms')],['Elemental Codex',()=>openScr('codex')],['Settings',()=>openScr('settings')],['Main Menu',toMain]];
   case'settings':return[['Music   '+dots(S.set.music),setAdj('music',4),1],['Sound effects   '+dots(S.set.sfx),setAdj('sfx',4),1],['Particles   '+(S.set.fx?'Full':'Reduced'),setAdj('fx',1),1],
     ['Screen shake   '+(S.set.shake?'On':'Off'),setAdj('shake',1),1],['Reduced motion   '+(S.set.calm?'On':'Off'),setAdj('calm',1),1],['Hints   '+['Off','Tutorial realms only','Everywhere'][S.set.hints]||'',setAdj('hints',2),1],['Full screen   '+(fsOK?(isFS()?'On':'Off'):'not available in this browser'),toggleFS,1],['Controls',()=>openScr('controls')],['Back',goBack]]}return[]}
@@ -796,9 +839,9 @@ function drawHud(){const p=G.p,gold=p.gold>0,e=EL[p.form],c=gold?'#ffd24a':e.c,L
   if(p.form==='powder'){X.fillStyle=p.scat>0?'rgba(232,194,103,.25)':'#e8c267';X.beginPath();X.arc(200,by+2,4,0,TAU);X.fill()}
   if(gold){const w=240,x=VW/2-w/2;txt('GOLD STATUS',VW/2,62,'bold 14px Georgia','#ffd24a',0,10);X.fillStyle='rgba(255,210,74,.18)';X.fillRect(x,70,w,7);X.fillStyle='#ffd24a';X.shadowColor='#ffd24a';X.shadowBlur=12;X.fillRect(x,70,w*clamp(p.gold/p.gmax,0,1),7);X.shadowBlur=0}
   if(!hub)hit(8,54,210,54,()=>{if(!G.tf)G.wheel={sel:WHEEL.indexOf(p.form),t:0,sticky:true,moved:false}});
-  txt(L.name,VW-22,32,'italic 15px Georgia','#9cc0ff','right',6);
+  txt(L.name+(G.d?'  ·  '+TIER[G.d]:''),VW-22,32,'italic 15px Georgia',G.d===2?'#ff9aa8':G.d?'#ffe0a0':'#9cc0ff','right',6);
   if(L.R){const zn=G.zi>=0?L.zones[G.zi]:null;txt(zn?zn.name+'  ·  '+zn.sub:L.R.sub,VW-22,52,'12px Georgia',zn?zn.hue:'#8a98c0','right');if(L.nf)txt('◆ '+G.fg+' / '+L.nf,VW-22,74,'bold 14px Georgia',G.fg>=L.nf?'#ffe9a8':'#9ff','right',6)}
-  if(G.field)txt('Attuned field · '+EL[G.field].name+' only',VW-22,96,'bold 13px Georgia',EL[G.field].c,'right',8);
+  if(G.field)txt(G.field.length>1?'Confluence · '+G.field.map(e=>EL[e].name).join(' + '):'Attuned field · '+EL[G.field[0]].name+' only',VW-22,96,'bold 13px Georgia',G.field.length>1?'#ffffff':EL[G.field[0]].c,'right',8);
   let prompt='';if(hub)for(const o of G.o)if(o.t==='portal'&&ov(p,o))prompt=unlocked(o.ri)?'F — enter '+REALMS[o.ri].name:lockMsg(o.ri);
   const showH=S.set.hints===2||(S.set.hints===1&&L.tut);
   if(G.nt>0){X.globalAlpha=Math.min(1,G.nt);txt(G.note,VW/2,VH-40,'italic 17px Georgia','#ffe9a8',0,10);X.globalAlpha=1}
@@ -814,20 +857,21 @@ function wheelKey(code){const w=G.wheel,step=d=>{for(let k=1;k<=NF;k++){const i=
   if(code==='ArrowLeft'||code==='KeyA')step(-1);else if(code==='ArrowRight'||code==='KeyD')step(1);else if(code==='Enter'||code==='Space'||code==='KeyE')closeWheel(true);else if(code==='Escape'||(code==='KeyQ'&&w.sticky))closeWheel(false)}
 function drawWheel(){const w=G.wheel;if(!w.sticky&&w.t<=.18)return;const k=clamp((w.t-(w.sticky?0:.18))*7,0,1),cx=VW/2,cy=VH/2,R=150+40*k;X.save();X.fillStyle='rgba(3,2,10,'+(.74*k)+')';X.fillRect(0,0,VW,VH);X.globalAlpha=k;
   X.strokeStyle='rgba(160,170,255,.2)';X.lineWidth=1;X.beginPath();X.arc(cx,cy,R,0,TAU);X.stroke();
-  WHEEL.forEach((f,i)=>{const a=i/NF*TAU-Math.PI/2,x=cx+Math.cos(a)*R,y=cy+Math.sin(a)*R,has=S.el[f],ok=has&&(!G.field||f==='normal'||f===G.field),sel=i===w.sel;
+  WHEEL.forEach((f,i)=>{const a=i/NF*TAU-Math.PI/2,x=cx+Math.cos(a)*R,y=cy+Math.sin(a)*R,has=S.el[f],ok=has&&fieldOK(f),sel=i===w.sel;
     if(sel){X.strokeStyle='#fff';X.lineWidth=2;X.beginPath();X.arc(x,y,28,0,TAU);X.stroke()}
     if(has){X.save();X.globalAlpha=k*(ok?1:.3);drawOrb(x,y,sel?20:15,f);X.restore()}else{X.fillStyle='#12101f';X.strokeStyle='rgba(255,255,255,.14)';X.lineWidth=1;X.beginPath();X.arc(x,y,14,0,TAU);X.fill();X.stroke()}
     if(f===G.p.form){X.fillStyle='#fff';X.beginPath();X.arc(cx+Math.cos(a)*(R+34),cy+Math.sin(a)*(R+34),3,0,TAU);X.fill()}});
   const f=WHEEL[w.sel],e=EL[f],has=S.el[f];txt(has?e.name.toUpperCase():'UNDISCOVERED',cx,cy-46,'bold 24px Georgia',has?e.c:'#667',0,has?14:0);
   if(has){if(f!=='normal'){txt('[E] '+e.pn,cx,cy-20,'italic 15px Georgia','#eef2ff');txt('[X] '+ATK[f][0],cx,cy,'italic 15px Georgia','#ffb8c8')}const y=wrapC(e.res,cx,cy+24,230,17,'13px Georgia','#c8d4ea');if(f!=='normal'){pips(cx-11,y+4,has,e.c);txt('Mastery '+STAGE[has],cx,y+24,'12px Georgia','#8fa3c8')}
-    if(G.field&&f!=='normal'&&f!==G.field)txt('Silenced by this field',cx,cy+104,'italic 13px Georgia','#ff8a9a')}
+    if(!fieldOK(f))txt('Silenced by this field',cx,cy+104,'italic 13px Georgia','#ff8a9a')}
   txt(w.sticky?'Tap a form to take it · tap elsewhere to close':'Aim with the mouse or ← →  ·  release Q or press Enter',cx,VH-22,'italic 14px Georgia','#8fa3c8');X.restore()}
 function wrapC(s,x,y,mw,lh,font,c){X.font=font;X.fillStyle=c;X.textAlign='center';let line='';for(const w of s.split(' ')){const t=line?line+' '+w:w;if(X.measureText(t).width>mw&&line){X.fillText(line,x,y);y+=lh;line=w}else line=t}if(line){X.fillText(line,x,y);y+=lh}return y}
 
-function drawList(){const it=items(),title={pause:'PAUSED',settings:'SETTINGS',confirm:'BEGIN ANEW?'}[scr]||'';txt(title,VW/2,104,'bold 38px Georgia','#bff4ff',0,20);
+function drawList(){const it=items(),title={pause:'PAUSED',settings:'SETTINGS',confirm:'BEGIN ANEW?',diff:'CHOOSE YOUR TRIAL'}[scr]||'';txt(title,VW/2,104,'bold 38px Georgia','#bff4ff',0,20);
+  if(scr==='diff'){const R=REALMS[ui.ri];txt(R.name+'  —  '+R.sub,VW/2,138,'italic 15px Georgia',R.hue);txt(['As first walked.','More wisps that chase and shoot, quicker bolts, and a higher fragment quota for Gold.','Guardians everywhere, the fastest bolts, and the steepest Gold quota.','Return'][clamp(ui.i,0,3)],VW/2,VH-70,'italic 14px Georgia','#c8d4ea');txt('✦ marks a difficulty you have cleared',VW/2,VH-44,'12px Georgia','#6f7fa6')}
   if(scr==='confirm')txt('Every discovered element, mastery and collectible will be erased.',VW/2,150,'italic 15px Georgia','#c8d4ea');
   if(scr==='pause'&&G)txt(G.L.name+'  ·  '+completion()+'% complete',VW/2,134,'italic 14px Georgia','#8fa3c8');
-  const y0=scr==='confirm'?230:scr==='settings'?166:178,dy=scr==='settings'?40:44;ui.i=clamp(ui.i,0,it.length-1);
+  const y0=scr==='confirm'?230:scr==='diff'?210:scr==='settings'?166:178,dy=scr==='settings'?40:scr==='diff'?50:44;ui.i=clamp(ui.i,0,it.length-1);
   it.forEach((a,i)=>{const y=y0+i*dy,sel=i===ui.i;txt((sel?'◈   ':'')+a[0]+(sel?'   ◈':''),VW/2,y,(sel?'bold ':'')+'21px Georgia',sel?'#ffffff':'#8fa3c8',0,sel?12:0);hit(VW/2-260,y-29,520,dy-2,()=>{ui.i=i;a[1]();sfx('ui')},i)});
   if(scr==='settings')txt(fsOK?'← → or tap to change   ·   Alt + Enter toggles full screen':'← → or tap to change   ·   on iPhone: Share → Add to Home Screen for a full-screen app',VW/2,VH-20,'italic 13px Georgia','#6f7fa6')}
 /* title screen: sacred geometry, the sixteen elements in medallions, the gold orb above */
@@ -897,7 +941,7 @@ function drawRealms(){const nx=nextGoal(),N=REALMS.length;if(!ui.init){ui.init=1
     const tag=!R?'✧':i===0?'·':i<=4?ROMAN[i-1]:i<=7?'E'+(i-4):'✧';txt(tag,rx+12,y,'bold 14px Georgia',u?hue:'#4a4d60');
     txt(R?R.name:'The Eternal Sanctuary',rx+34,y,(sel?'bold ':'')+'16px Georgia',u?(sel?'#ffffff':'#c8d4ea'):'#4a4d60','left');
     if(R&&R.els)R.els.forEach((e,k)=>{const ox=rx+232+k*22;if(S.el[e])drawOrb(ox,y-5,7,e);else{X.fillStyle='#14131f';X.strokeStyle='rgba(255,255,255,.16)';X.lineWidth=1;X.beginPath();X.arc(ox,y-5,7,0,TAU);X.fill();X.stroke()}});
-    if(i===nx)txt('NEXT',rx+rw-70,y-1,'bold 11px Georgia','#ffffff',0,8+4*Math.sin(T*4));else if(dn)txt('✦',rx+rw-66,y,'14px Georgia','#ffe9a8',0,8);else if(R&&!u)txt('sealed',rx+rw-70,y-1,'italic 11px Georgia','#4a4d60');
+    if(i===nx)txt('NEXT',rx+rw-70,y-1,'bold 11px Georgia','#ffffff',0,8+4*Math.sin(T*4));else if(dn)for(let d=0;d<3;d++){X.fillStyle=tierDone(R.id,d)?'#ffe9a8':'rgba(255,255,255,.16)';X.beginPath();X.arc(rx+rw-80+d*11,y-5,3.5,0,TAU);X.fill()}else if(R&&!u)txt('sealed',rx+rw-70,y-1,'italic 11px Georgia','#4a4d60');
     if(R&&FRN[R.id]&&u){const g=fragGot(R.id);txt('◆ '+g+'/'+FRN[R.id],rx+rw,y-1,'11px Georgia',g>=FRN[R.id]?'#ffe9a8':'#7fb8c8','right')}
     hit(rx-12,y-23,rw+24,dy-4,()=>{if(ui.i===i)pickRealm(i);else{ui.i=i;sfx('ui')}},i)}
   const i=ui.i,R=i<N?REALMS[i]:null,u=R?unlocked(i):true;txt(R?R.sub:'Neutral ground between the realms',VW/2,68,'bold 15px Georgia',R?(u?R.hue:'#6a6d80'):'#e8eaf0');
@@ -908,12 +952,13 @@ function drawControls(){txt('CONTROLS',VW/2,70,'bold 30px Georgia','#bff4ff',0,1
    ['Choose a form','Hold Q — aim with mouse or ← →, release'],['Next form','Tap Q'],['Enter portal','F'],['Journey map','M'],['Return to last monument','R'],['Pause','Esc'],['Full screen','Alt + Enter  ·  or Settings']].forEach((r,i)=>{const y=108+i*28;txt(r[0],VW/2-20,y,'16px Georgia','#c8d4ea','right');txt(r[1],VW/2+20,y,'bold 16px Georgia','#ffffff','left')});
   txt('Touch: on-screen buttons — ◎ form wheel, ⚔ attack, ✦ power, ⇄ repel',VW/2,VH-58,'italic 14px Georgia','#8fa3c8');txt('Press Enter or tap to return',VW/2,VH-26,'italic 14px Georgia','#6f7fa6');hit(0,0,VW,VH,goBack)}
 function fmtTime(s){s=Math.floor(s);return Math.floor(s/3600)+'h '+String(Math.floor(s%3600/60)).padStart(2,'0')+'m'}
-function drawDone(){const L=G.L,R=L.R,r=G.res||{},nx=nextGoal();txt(R.els?'PATH COMPLETE':'REALM COMPLETE',VW/2,132,'bold 42px Georgia','#ffe9a8',0,24);txt(L.name+'  ·  '+R.sub,VW/2,168,'italic 18px Georgia','#c8d4ea');let y=216;
+function drawDone(){const L=G.L,R=L.R,r=G.res||{},nx=nextGoal();txt(R.els?'PATH COMPLETE':'REALM COMPLETE',VW/2,124,'bold 42px Georgia','#ffe9a8',0,24);txt(L.name+'  ·  '+R.sub,VW/2,158,'italic 18px Georgia','#c8d4ea');txt('Cleared on '+tierName(R,G.d),VW/2,184,'bold 14px Georgia',G.d===2?'#ff9aa8':G.d?'#ffe0a0':'#9cc0ff');let y=222;
+  if(r.first){txt('Normal and Hard are now open for this '+(R.els?'path':'realm'),VW/2,y,'bold 16px Georgia','#ffe0a0',0,8);y+=44}
   if(r.up&&r.up.length){const w=r.up.length*34;r.up.forEach((e,k)=>drawOrb(VW/2-w/2+17+k*34,y-6,13,e));y+=30;txt(r.up.map(e=>EL[e].name).join(' · ')+' — Control attained (Mastery II)',VW/2,y,'bold 16px Georgia','#eef2ff',0,8);y+=32}
   if(r.life){txt('Path complete — you carry one more light of life',VW/2,y,'bold 18px Georgia','#ff8aa0',0,10);y+=34}
   if(R.id==='convergence'){txt('All sixteen elements mastered. The Golden Ascension opens.',VW/2,y,'bold 18px Georgia','#ffd24a',0,10);y+=34}
   if(R.id==='ascension'){txt('The harmony holds.',VW/2,y,'bold 18px Georgia','#ffd24a',0,10);y+=34}
-  txt('◆ '+G.fg+' of '+L.nf+' fragments'+(MEM[R.id]?(S.mem[R.id]?'   ·   Memory recovered':'   ·   A memory remains hidden'):''),VW/2,y,'15px Georgia',G.fg>=L.nf?'#ffe9a8':'#9cc0ff');y+=28;
+  txt('◆ '+G.fg+' of '+L.nf+' fragments this run'+(MEM[R.id]?(S.mem[R.id]?'   ·   Memory recovered':'   ·   A memory remains hidden'):''),VW/2,y,'15px Georgia',G.fg>=L.nf?'#ffe9a8':'#9cc0ff');y+=28;
   txt(completion()+'% complete   ·   '+S.deaths+' falls   ·   '+fmtTime(S.time),VW/2,y,'15px Georgia','#8fa3c8');y+=40;
   if(nx>=0){const N=REALMS[nx];txt('NEXT ON THE JOURNEY',VW/2,y,'bold 11px Georgia','#8fa3c8');txt(N.name+'  —  '+N.sub,VW/2,y+24,'bold 18px Georgia',N.hue,0,10)}
   if(ui.t>.6){txt('Press Enter or tap — return to the Sanctuary',VW/2,VH-44,'italic 16px Georgia','#ffffff');hit(0,0,VW,VH,enterHub)}}

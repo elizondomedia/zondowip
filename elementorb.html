@@ -2,25 +2,28 @@
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#03020a">
+<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="ElementOrb">
 <title>ELEMENTORB · One Orb. Endless Possibilities.</title>
 <style>
 :root{color-scheme:dark}
 html,body{margin:0;height:100%;background:#03020a;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
 canvas{position:absolute;display:block;outline:none}
-#tc,#pz{display:none}
+#tc,#pz,#fs{display:none}
 body.touch #tc{display:flex;position:fixed;left:0;right:0;bottom:calc(16px + env(safe-area-inset-bottom,0px));justify-content:space-between;align-items:flex-end;
  padding:0 calc(18px + env(safe-area-inset-right,0px)) 0 calc(18px + env(safe-area-inset-left,0px));box-sizing:border-box;pointer-events:none}
 .pad{display:flex;gap:10px;align-items:flex-end;pointer-events:auto}.pad.r{flex-direction:column;align-items:flex-end}.pad.l{align-items:center}.row{display:flex;gap:10px;align-items:flex-end}
-#tc b,#pz{width:56px;height:56px;border-radius:50%;border:2px solid rgba(140,200,255,.4);background:rgba(120,170,255,.12);color:#cfe6ff;font:700 19px/1 sans-serif;
+#tc b,#pz,#fs{width:56px;height:56px;border-radius:50%;border:2px solid rgba(140,200,255,.4);background:rgba(120,170,255,.12);color:#cfe6ff;font:700 19px/1 sans-serif;
  display:grid;place-items:center;box-shadow:0 0 14px rgba(100,180,255,.3);touch-action:none}
 #tc b.s{width:46px;height:46px;font-size:16px}#tc b.on,#pz.on{background:rgba(160,210,255,.4)}
 body.touch #pz{display:grid;position:fixed;top:calc(10px + env(safe-area-inset-top,0px));left:50%;margin-left:-21px;width:42px;height:42px;font-size:13px}
+body.touch.fsok #pz{margin-left:-48px}body.touch.fsok #fs{display:grid;position:fixed;top:calc(10px + env(safe-area-inset-top,0px));left:50%;margin-left:6px;width:42px;height:42px;font-size:18px}
 </style></head><body>
 <canvas id="c" tabindex="0" aria-label="ELEMENTORB game"></canvas>
 <div id="tc"><div class="pad r l"><div class="row"><b data-k="ArrowDown" class="s">&#9660;</b></div><div class="row"><b data-k="ArrowLeft">&#9664;</b><b data-k="ArrowRight">&#9654;</b></div></div>
 <div class="pad r"><div class="row"><b data-k="KeyQ" class="s">&#9678;</b><b data-k="KeyF" class="s">F</b><b data-k="ShiftLeft" class="s">&#8644;</b></div>
 <div class="row"><b data-k="KeyX">&#9876;</b><b data-k="KeyE">&#10022;</b><b data-k="ArrowUp">&#9650;</b></div></div></div>
-<b id="pz" data-k="Escape">&#10074;&#10074;</b>
+<b id="pz" data-k="Escape">&#10074;&#10074;</b><b id="fs">&#9974;</b>
 <script>
 /* ELEMENTORB: One Orb. Endless Possibilities. One self-contained file: no libraries, no assets, no build step. */
 (()=>{'use strict';
@@ -36,6 +39,11 @@ const ov=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
 const rdist=(r,x,y)=>Math.hypot(Math.max(r.x-x,0,x-r.x-r.w),Math.max(r.y-y,0,y-r.y-r.h));
 const rgba=(h,a)=>{const n=parseInt(h.slice(1),16);return'rgba('+(n>>16)+','+(n>>8&255)+','+(n&255)+','+a+')'};
 let T=0,S=null;
+/* full screen: the whole page goes full screen so the touch buttons stay on top */
+const FSE=document.documentElement,fsOK=!!(FSE&&(FSE.requestFullscreen||FSE.webkitRequestFullscreen));
+const isFS=()=>!!(document.fullscreenElement||document.webkitFullscreenElement);
+function toggleFS(){if(!fsOK)return;try{if(isFS()){(document.exitFullscreen||document.webkitExitFullscreen).call(document)}
+  else{const r=(FSE.requestFullscreen||FSE.webkitRequestFullscreen).call(FSE);const lock=()=>{try{if(screen.orientation&&screen.orientation.lock)screen.orientation.lock('landscape').catch(()=>{})}catch(e){}};if(r&&r.then)r.then(lock).catch(()=>{});else lock()}}catch(e){}}
 
 /* ----- save: versioned, validated field by field ----- */
 const SAVE_KEY='elementum.save',SAVE_V=2;
@@ -767,7 +775,7 @@ function items(){const hub=G&&G.L.id==='hub';switch(scr){
   case'pause':return[['Resume',goBack],...(hub?[]:[['Return to last monument',()=>{goBack();respawn(true)}],['Restart realm',()=>{const R=G.L.R;delete S.far[R.id];S.realm=null;enterRealm(R.i,false)}],['Return to Sanctuary',enterHub]]),
     ['The Journey',()=>openScr('realms')],['Elemental Codex',()=>openScr('codex')],['Settings',()=>openScr('settings')],['Main Menu',toMain]];
   case'settings':return[['Music   '+dots(S.set.music),setAdj('music',4),1],['Sound effects   '+dots(S.set.sfx),setAdj('sfx',4),1],['Particles   '+(S.set.fx?'Full':'Reduced'),setAdj('fx',1),1],
-    ['Screen shake   '+(S.set.shake?'On':'Off'),setAdj('shake',1),1],['Reduced motion   '+(S.set.calm?'On':'Off'),setAdj('calm',1),1],['Hints   '+['Off','Tutorial realms only','Everywhere'][S.set.hints]||'',setAdj('hints',2),1],['Controls',()=>openScr('controls')],['Back',goBack]]}return[]}
+    ['Screen shake   '+(S.set.shake?'On':'Off'),setAdj('shake',1),1],['Reduced motion   '+(S.set.calm?'On':'Off'),setAdj('calm',1),1],['Hints   '+['Off','Tutorial realms only','Everywhere'][S.set.hints]||'',setAdj('hints',2),1],['Full screen   '+(fsOK?(isFS()?'On':'Off'):'not available in this browser'),toggleFS,1],['Controls',()=>openScr('controls')],['Back',goBack]]}return[]}
 function uiKey(code){const up=code==='ArrowUp'||code==='KeyW',dn=code==='ArrowDown'||code==='KeyS',lf=code==='ArrowLeft'||code==='KeyA',rt=code==='ArrowRight'||code==='KeyD',
     ok=code==='Enter'||code==='Space'||code==='KeyE'||code==='KeyF',esc=code==='Escape'||code==='Backspace';
   if(scr==='done'||scr==='ending'){if((ok||esc)&&ui.t>(scr==='ending'?6.5:.6))enterHub();return}
@@ -819,9 +827,9 @@ function wrapC(s,x,y,mw,lh,font,c){X.font=font;X.fillStyle=c;X.textAlign='center
 function drawList(){const it=items(),title={pause:'PAUSED',settings:'SETTINGS',confirm:'BEGIN ANEW?'}[scr]||'';txt(title,VW/2,104,'bold 38px Georgia','#bff4ff',0,20);
   if(scr==='confirm')txt('Every discovered element, mastery and collectible will be erased.',VW/2,150,'italic 15px Georgia','#c8d4ea');
   if(scr==='pause'&&G)txt(G.L.name+'  ·  '+completion()+'% complete',VW/2,134,'italic 14px Georgia','#8fa3c8');
-  const y0=scr==='confirm'?230:178,dy=44;ui.i=clamp(ui.i,0,it.length-1);
+  const y0=scr==='confirm'?230:scr==='settings'?166:178,dy=scr==='settings'?40:44;ui.i=clamp(ui.i,0,it.length-1);
   it.forEach((a,i)=>{const y=y0+i*dy,sel=i===ui.i;txt((sel?'◈   ':'')+a[0]+(sel?'   ◈':''),VW/2,y,(sel?'bold ':'')+'21px Georgia',sel?'#ffffff':'#8fa3c8',0,sel?12:0);hit(VW/2-260,y-29,520,dy-2,()=>{ui.i=i;a[1]();sfx('ui')},i)});
-  if(scr==='settings')txt('← → or tap to change',VW/2,VH-24,'italic 13px Georgia','#6f7fa6')}
+  if(scr==='settings')txt(fsOK?'← → or tap to change   ·   Alt + Enter toggles full screen':'← → or tap to change   ·   on iPhone: Share → Add to Home Screen for a full-screen app',VW/2,VH-20,'italic 13px Georgia','#6f7fa6')}
 /* title screen: sacred geometry, the sixteen elements in medallions, the gold orb above */
 const TITLE_L=['fire','water','earth','rock','powder','acid','crystal','sticky'],TITLE_R=['electric','air','ice','magnetic','psychic','spiky','metal','phantom'];
 const titlePos=(s,i)=>{const a=(i-3.5)*.34;return[480+s*Math.cos(a)*385,272+Math.sin(a)*222]};
@@ -859,7 +867,8 @@ function drawMain(){const cx=VW/2,oy=104+Math.sin(T*1.6)*5;drawOrb(cx,oy,38,'gol
   X.fillStyle='#ffe6a0';X.beginPath();X.moveTo(cx,ty+8);X.lineTo(cx+6,ty+14);X.lineTo(cx,ty+20);X.lineTo(cx-6,ty+14);X.fill();X.restore();
   txt('One Orb. Endless Possibilities.',cx,ty+44,'italic 20px Georgia','#bfe6ff',0,10);
   const it=items();ui.i=clamp(ui.i,0,it.length-1);it.forEach((a,i)=>{const y=298+i*35,sel=i===ui.i;txt((sel?'◈   ':'')+a[0]+(sel?'   ◈':''),cx,y,(sel?'bold ':'')+'20px Georgia',sel?'#ffffff':'#b8c4e8',0,sel?12:0);hit(cx-180,y-24,360,33,()=>{ui.i=i;a[1]();sfx('ui')},i)});
-  txt(S.started?completion()+'% complete  ·  '+FORMS.filter(f=>S.el[f]).length+' of 17 forms':'Discover. Transform. Master.',cx,466,'italic 13px Georgia','#c4d0f0')}
+  txt(S.started?completion()+'% complete  ·  '+FORMS.filter(f=>S.el[f]).length+' of 17 forms':'Discover. Transform. Master.',cx,466,'italic 13px Georgia','#c4d0f0');
+  if(fsOK){txt('⛶  '+(isFS()?'Exit full screen':'Full screen'),VW-70,30,'13px Georgia','#c4d0f0',0,6);hit(VW-140,8,134,34,toggleFS)}}
 function drawCodex(){txt('ELEMENTAL CODEX',VW/2,54,'bold 30px Georgia','#bff4ff',0,16);const gx=44,gy=92,cw=88,ch=124;
   ORDER.forEach((f,i)=>{const x=gx+(i%6)*cw+cw/2,y=gy+Math.floor(i/6)*ch+44,has=S.el[f],sel=i===ui.i,e=EL[f];
     if(sel){X.strokeStyle='rgba(255,255,255,.8)';X.lineWidth=1.5;X.strokeRect(x-cw/2+4,y-42,cw-8,ch-10)}
@@ -896,7 +905,7 @@ function drawRealms(){const nx=nextGoal(),N=REALMS.length;if(!ui.init){ui.init=1
   hit(VW-130,8,118,34,goBack);txt('‹ Back',VW-72,32,'bold 16px Georgia','#bff4ff')}
 function drawControls(){txt('CONTROLS',VW/2,70,'bold 30px Georgia','#bff4ff',0,16);
   [['Move','A / D   or   ← / →'],['Jump  ·  climb  ·  swim up','W / ↑ / Space'],['Dive  ·  climb down  ·  drop from ceiling','S / ↓'],['Elemental power','E'],['Attack','X  or  K'],['Magnetic repel','Shift'],
-   ['Choose a form','Hold Q — aim with mouse or ← →, release'],['Next form','Tap Q'],['Enter portal','F'],['Journey map','M'],['Return to last monument','R'],['Pause','Esc']].forEach((r,i)=>{const y=112+i*31;txt(r[0],VW/2-20,y,'16px Georgia','#c8d4ea','right');txt(r[1],VW/2+20,y,'bold 16px Georgia','#ffffff','left')});
+   ['Choose a form','Hold Q — aim with mouse or ← →, release'],['Next form','Tap Q'],['Enter portal','F'],['Journey map','M'],['Return to last monument','R'],['Pause','Esc'],['Full screen','Alt + Enter  ·  or Settings']].forEach((r,i)=>{const y=108+i*28;txt(r[0],VW/2-20,y,'16px Georgia','#c8d4ea','right');txt(r[1],VW/2+20,y,'bold 16px Georgia','#ffffff','left')});
   txt('Touch: on-screen buttons — ◎ form wheel, ⚔ attack, ✦ power, ⇄ repel',VW/2,VH-58,'italic 14px Georgia','#8fa3c8');txt('Press Enter or tap to return',VW/2,VH-26,'italic 14px Georgia','#6f7fa6');hit(0,0,VW,VH,goBack)}
 function fmtTime(s){s=Math.floor(s);return Math.floor(s/3600)+'h '+String(Math.floor(s%3600/60)).padStart(2,'0')+'m'}
 function drawDone(){const L=G.L,R=L.R,r=G.res||{},nx=nextGoal();txt(R.els?'PATH COMPLETE':'REALM COMPLETE',VW/2,132,'bold 42px Georgia','#ffe9a8',0,24);txt(L.name+'  ·  '+R.sub,VW/2,168,'italic 18px Georgia','#c8d4ea');let y=216;
@@ -932,8 +941,9 @@ function press(code,touch){audioInit();if(scr){uiKey(code);return}if(!G)return;c
   case'KeyS':case'ArrowDown':p.ceil=0;break}}
 function release(code){const k=KEYMAP[code];if(k)K[k]=0;if(code==='KeyQ'&&G&&G.wheel&&!G.wheel.sticky)closeWheel(true)}
 function mpos(e){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)/r.width*VW,y:(e.clientY-r.top)/r.height*VH}}
-function boot(){S=loadSave();fragTotals();resize();addEventListener('resize',resize);
-  addEventListener('keydown',e=>{if(e.ctrlKey||e.metaKey||e.altKey)return;if(e.code.startsWith('Arrow')||e.code==='Space'||e.code==='Tab'||e.code==='Backspace')e.preventDefault();if(e.repeat&&!scr)return;press(e.code)});
+function boot(){S=loadSave();fragTotals();resize();addEventListener('resize',resize);for(const ev of['fullscreenchange','webkitfullscreenchange','orientationchange'])document.addEventListener(ev,()=>{resize();setTimeout(resize,250)});addEventListener('orientationchange',()=>setTimeout(resize,250));
+  const fb=document.getElementById('fs');if(fb){if(fsOK)document.body.classList.add('fsok');fb.addEventListener('pointerdown',e=>{e.preventDefault();audioInit();toggleFS()})}
+  addEventListener('keydown',e=>{if(e.altKey&&e.code==='Enter'){e.preventDefault();if(!e.repeat)toggleFS();return}if(e.ctrlKey||e.metaKey||e.altKey)return;if(e.code.startsWith('Arrow')||e.code==='Space'||e.code==='Tab'||e.code==='Backspace')e.preventDefault();if(e.repeat&&!scr)return;press(e.code)});
   addEventListener('keyup',e=>release(e.code));addEventListener('blur',clearKeys);
   document.addEventListener('visibilitychange',()=>{if(document.hidden){save();clearKeys();if(G&&!scr){G.wheel=null;openScr('pause')}}});addEventListener('pagehide',save);
   cv.addEventListener('pointermove',e=>{const m=mpos(e),w=G&&!scr&&G.wheel;if(w&&(w.sticky||w.t>.18)){const i=wheelAt(m);if(i>=0&&i!==w.sel){w.sel=i;w.moved=true}}

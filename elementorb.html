@@ -128,6 +128,12 @@ air:['spires','The Skyward Spires','#98c8e8'],magnetic:['forge','The Polar Forge
 rock:['quarry','The Ancient Quarry','#b09a80'],phantom:['veil','The Veil Between','#7a80f0'],crystal:['cathedral','The Prism Cathedral','#70d8f8'],metal:['citadel','The Iron Citadel','#9aa8c0']};
 const PATHS=[['Kindling',STD.slice(0,4),'#ff9a5a'],['Tempering',STD.slice(4,8),'#5ac8e8'],['Ascent',STD.slice(8,12),'#8ae8c0'],['Resolve',STD.slice(12,16),'#b8a0f0']];
 /* attacks: [name, kind (b bolt, r burst, c chain, d dash), damage, speed|range, life|chain, effect] */
+/* the sixteen foes: each shrugs off its own element and breaks to exactly one other (every element is the bane of exactly one foe) */
+const FOE={fire:['Cinderling','water'],water:['Tidewraith','electric'],electric:['Voltling','earth'],earth:['Mossling','ice'],ice:['Frostmote','fire'],
+  air:['Galewisp','sticky'],powder:['Dust Devil','air'],acid:['Sludgeling','powder'],rock:['Cragling','acid'],metal:['Ironshell','magnetic'],
+  magnetic:['Lodeling','psychic'],psychic:['Mindeye','phantom'],phantom:['Wraith','crystal'],crystal:['Prismite','rock'],spiky:['Burrling','metal'],sticky:['Gumling','spiky']};
+const PREY={};for(const e in FOE)PREY[FOE[e][1]]=e; /* PREY[form] = the foe that form strikes for double */
+function foeMul(o,f){return !o.el||!f||f==='gold'?1:f===o.el?0:FOE[o.el][1]===f?2:1}
 const ATK={fire:['Fireball','b',2,520,.9,'burn'],water:['Water Jet','b',1,600,.7,'push'],earth:['Root Lash','b',2,340,1.1,'root'],electric:['Chain Bolt','c',1,260,3,'stun'],
 ice:['Frost Shard','b',1,560,.8,'freeze'],sticky:['Glue Glob','b',1,420,.95,'glue'],acid:['Acid Spit','b',1,480,.9,'corrode'],powder:['Sandblast','r',1,125,0,'stun'],
 air:['Gale Blast','r',1,150,0,'push'],magnetic:['Polar Pulse','r',1,170,0,'pull'],psychic:['Mind Spike','c',2,330,1,''],spiky:['Thorn Volley','b',1,640,.55,'tri'],
@@ -172,8 +178,10 @@ function Builder(d){const b={d:d||0,x:0,gy:GY,o:[],cps:[],hints:[],bot:[],n:0,fn
   b.cp=()=>{b.cps.push({x:b.x+50,y:b.gy});return b};
   b.hint=(x,s)=>{if(!b.quiet)b.hints.push([x,s]);return b};b.say=(x,s)=>{b.hints.push([x,s]);return b};
   b.frag=(x,y)=>b.add('frag',x,y,26,26,{n:b.fn++});
-  b.en=(k,x0,x1,ward)=>{const s={wisp:28,shade:34,spit:30,sent:40}[k],hp={wisp:1,shade:2,spit:2,sent:4}[k];
-    return b.add('en',x0,b.gy-s-8,s,s,{k,x0,x1,dir:1,by:b.gy-s-8,stun:0,frz:0,hp,mhp:hp,ft:1.2,dot:0,fl:0,ward})};
+  /* a foe's element: mostly the prey of the form this stretch is built around; with b.mx set, every b.mx-th one is a foe weak to some other form you hold */
+  b.pick=()=>{const fe=b.fe;if(!fe)return;const j=b.nen=(b.nen||0)+1;if(b.mx&&j%b.mx===0){const av=(b.av||STD).filter(x=>x!==fe&&PREY[x]!==fe);return PREY[av[(j*5+(b.x>>6))%av.length]]}return PREY[fe]};
+  b.en=(k,x0,x1,ward,el)=>{const s={wisp:28,shade:34,spit:30,sent:40}[k],hp={wisp:1,shade:2,spit:2,sent:4}[k];
+    return b.add('en',x0,b.gy-s-8,s,s,{k,x0,x1,dir:1,by:b.gy-s-8,stun:0,frz:0,hp,mhp:hp,ft:1.2,dot:0,fl:0,ward,el:el||b.pick()})};
   b.haz=(k,x,w)=>{const d={flame:[80,80],sludge:[14,14],spike:[16,16],arc:[144,160],frost:[90,90],bramble:[36,36]}[k];return b.add(k,x,b.gy-d[1],w,d[0])};
   b.level=()=>{if(b.gy!==GY){const ex=b.x;b.ground(140);b.gy=GY;b.bot.push(['R','x>',ex+150],['','g']);b.ground(300)}return b};
   return b}
@@ -272,21 +280,21 @@ psychic(b){const x0=b.x;b.ground(460);b.en('sent',x0+150,x0+250);b.frag(x0+212,b
 spiky(b){const x0=b.x;b.ground(460);b.haz('bramble',x0+140,150);b.en('wisp',x0+150,x0+250);b.frag(x0+202,b.gy-42);b.hint(x0-40,'Thorns — lesser wisps die on touch, and brambles cannot cut you');b.bot.push(['R','x>',x0+380])},
 crystal(b){const x0=b.x;b.ground(520);b.en('spit',x0+330,x0+330);b.frag(x0+400,b.gy-42);b.hint(x0-40,'Crystal refracts — a wisp bolt is thrown back at its maker');b.bot.push(['clear',420],['R','x>',x0+450])}};
 /* a guarded fragment: attack practice. Higher difficulties add chasers and shooters */
-function GUARD(b,e,kind){const x0=b.x;b.ground(640);b.foes(x0,[[kind||'wisp',200,320],['spit',430,430],['shade',240,400,1],['wisp',300,410,2],['spit',484,484,2],['shade',330,470,3],['wisp',180,300,4]]);b.frag(x0+556,b.gy-100);b.hint(x0-60,'Press X to attack — '+ATK[e][0]);
+function GUARD(b,e,kind){b.fe=e;const x0=b.x;b.ground(640);b.foes(x0,[[kind||'wisp',200,320],['spit',430,430],['shade',240,400,1],['wisp',300,410,2],['spit',484,484,2],['shade',330,470,3],['wisp',180,300,4]]);b.frag(x0+556,b.gy-100);b.hint(x0-60,'Press X to attack — '+ATK[e][0]);
   b.bot.push(['form',e],['R','x>',x0-30],['clear',600],['R','x>',x0+516],['RJ','x>',x0+589],['R','x>',x0+610])}
 /* the approach to a trial */
-function LEAD(b,e){const x0=b.x;b.ground(560);b.foes(x0,[['wisp',200,360],['shade',250,440,1],['spit',470,470,2],['wisp',130,260,3],['shade',300,470,4]]);b.bot.push(['form',e],['R','x>',x0-30],['clear',560],['R','x>',x0+510])}
+function LEAD(b,e){b.fe=e;const x0=b.x;b.hint(x0-60,FOE[PREY[e]][0]+'s break to '+EL[e].name+' — your attack strikes them twice as hard. No foe feels its own element');b.ground(560);b.foes(x0,[['wisp',200,360],['shade',250,440,1],['spit',470,470,2],['wisp',130,260,3],['shade',300,470,4]]);b.bot.push(['form',e],['R','x>',x0-30],['clear',560],['R','x>',x0+510])}
 /* path finale: a Gold Catalyst, then a run of wisps */
-function FINALE(b,e){const x0=b.x;b.ground(1200);b.add('gcat',x0+140,b.gy-72,30,30,{q:-1,dur:10});
+function FINALE(b,e){b.fe=e;const x0=b.x;b.ground(1200);b.add('gcat',x0+140,b.gy-72,30,30,{q:-1,dur:10});
   b.foes(x0,[['wisp',330,470],['shade',520,700],['spit',780,780],['wisp',840,960],['shade',600,820,1],['spit',900,900,1],['sent',400,760,2],['spit',1010,1010,2]]);b.frag(x0+1130,b.gy-100);
   b.hint(x0-40,'A Gold Catalyst. Gather the fragments it asks for on this run and it lends you a moment of invincibility');
   b.bot.push(['form',e],['R','x>',x0+200],['clear',920],['R','x>',x0+1090],['RJ','x>',x0+1160])}
 /* a warded arena: the gate opens when every warded wisp has fallen */
-function NEST(b,list,form,W){const x0=b.x,id=b.id();b.ground(W+260);b.foes(x0,list.concat([['spit',W-50,W-50,1],['shade',110,W-140,2],['wisp',160,W-200,3],['spit',W-112,W-112,4]]),id);b.bar('gate',x0+W+60,26,{id,ward:1});
+function NEST(b,list,form,W){b.fe=form;const x0=b.x,id=b.id();b.ground(W+260);b.foes(x0,list.concat([['spit',W-50,W-50,1],['shade',110,W-140,2],['wisp',160,W-200,3],['spit',W-112,W-112,4]]),id);b.bar('gate',x0+W+60,26,{id,ward:1});
   b.hint(x0-40,'A warded gate — it opens only when its guardians fall');b.bot.push(['form',form],['R','x>',x0+60],['clear',W],['','t',1.3],['R','x>',x0+W+150])}
 /* hazard gauntlet behind a Gold Catalyst: the hard way is a form for every strip, the golden way is a straight run */
 function GAUNT(b,strips){const x0=b.x,d=b.ft();b.ground(300);b.add('gcat',x0+130,b.gy-72,30,30,{q:-1,dur:12});b.hint(x0-40,'A Gold Catalyst — it wakes for those who gathered enough fragments on this run');b.bot.push(['R','x>',x0+210]);
-  strips.forEach((s,i)=>{const xs=b.x;b.ground(450);b.haz(s[0],xs,260);if(d||i%2===0)b.en(i%4?'shade':'wisp',xs+290,xs+390);if(d>1)b.en('spit',xs+418,xs+418);if(d>2)b.en(i%2?'wisp':'shade',xs+300,xs+400);if(i===1)b.frag(xs+117,b.gy-42);
+  strips.forEach((s,i)=>{b.fe=s[1];const xs=b.x;b.ground(450);b.haz(s[0],xs,260);if(d||i%2===0)b.en(i%4?'shade':'wisp',xs+290,xs+390);if(d>1)b.en('spit',xs+418,xs+418);if(d>2)b.en(i%2?'wisp':'shade',xs+300,xs+400);if(i===1)b.frag(xs+117,b.gy-42);
     b.bot.push(['form',s[1]],['R','x>',xs+190],['clear',260],['R','x>',xs+300])});b.ground(120)}
 const COMBO={
 frozen(b){const gy=b.gy;b.ground(300);const xs=b.x;b.add('g',xs,gy+160,340,900);b.add('pool',xs,gy+8,340,152,{dry:1,fill:0});b.x=xs+340;b.step(-62);b.ground(300);b.hint(xs-300,'A dry basin. Water fills it. Ice holds it');
@@ -317,13 +325,13 @@ function buildAwakening(d){const b=Builder(d);b.cp();b.ground(500);b.hint(20,'A 
   b.cp();b.ground(500);b.hint(2100,'Monuments remember you. R returns you to the last one · the ◆ fragments are worth gathering');
   b.bot.push(['R','x>',440],['RJ','x>',520],['R','x>',662],['RJ','x>',850],['R','x>',1236],['RJ','x>',1400],['R','x>',1560],['RJ','x>',1790],['R','x>',1830],['RJ','x>',2060],['R','x>',2300]);return b}
 /* a tutorial path: discover four elements in turn, then prove each one, then a golden finale */
-function buildPath(n,d){const els=PATHS[n-1][1],b=Builder(d),Z=[];b.cp();b.ground(480);b.add('g',250,GY-70,90,12,{ow:1,k:'leaf'});b.frag(282,GY-160);b.hint(20,'Four catalysts wait along this path');b.bot.push(['R','x>',300]);
+function buildPath(n,d){const els=PATHS[n-1][1],b=Builder(d),Z=[];b.mx=[0,3,2][b.d];b.av=STD.slice(0,n*4);b.cp();b.ground(480);b.add('g',250,GY-70,90,12,{ow:1,k:'leaf'});b.frag(282,GY-160);b.hint(20,'Four catalysts wait along this path');b.bot.push(['R','x>',300]);
   els.forEach((e,k)=>{Z.push([b.x,e]);b.cp();const x0=b.x;b.ground(640);if(k%2)b.add('mem',x0+250,GY-152,30,30,{id:MEMZ[n-1][k>>1]});b.add('cat',x0+520,GY-72,30,30,{e});b.hint(x0+60,'A catalyst stirs ahead');
-    if(d){b.foes(x0,[['wisp',190,330],['spit',410,410,2]]);b.bot.push(['form',e],['clear',470])}
+    if(d){b.fe=e;b.foes(x0,[['wisp',190,330],['spit',410,410,2]]);b.bot.push(['form',e],['clear',470])}
     b.bot.push(['R','x>',x0+600],['','t',.3]);SEG[e](b,1);if(RES[e])RES[e](b);b.level()});
   els.forEach(e=>{Z.push([b.x,e]);b.cp();LEAD(b,e);SEG[e](b,2);b.cp();GUARD(b,e);b.level()});
   Z.push([b.x,null]);b.cp();FINALE(b,els[3],6);b.zones=Z;return b}
-function buildExp(n,d){const b=Builder(d);b.cp();b.ground(520);
+function buildExp(n,d){const b=Builder(d);b.mx=[3,2,2][b.d];b.cp();b.ground(520);b.fe=['fire','air','crystal'][n-1];
   if(n===1){b.en('wisp',260,400);b.frag(452,GY-100);b.bot.push(['form','fire'],['clear',430],['R','x>',470]);
     b.cp();NEST(b,[['wisp',120,260],['shade',300,460],['wisp',380,520]],'fire',560);
     b.cp();COMBO.stair(b);b.frag(b.x-150,b.gy-42);b.level();
@@ -357,9 +365,9 @@ function BOSS(b,c){const x0=b.x,W=1240,id=b.id(),s=72,gy=b.gy,hx=x0+W-330,by=gy-
 const UNMADE=STD.map((e,i)=>STD[i*7%16]);
 /* The Convergence — a boss level. Four confluences (a path's four forms, shuffled, no hints, foes between every trial),
    braided chambers that need forms from different paths, a crucible with every form open, a golden gauntlet, and the Warden of Sixteen */
-function buildConvergence(d){const b=Builder(d);b.fd=d+1;b.ag=1;b.cp();b.ground(600);b.say(20,'Four confluences, the braided chambers, the crucible — and the Warden. No single form will carry you');b.bot.push(['R','x>',300]);
+function buildConvergence(d){const b=Builder(d);b.mx=2;b.fd=d+1;b.ag=1;b.cp();b.ground(600);b.say(20,'Four confluences, the braided chambers, the crucible — and the Warden. No single form will carry you');b.bot.push(['R','x>',300]);
   const field=(fx,es)=>b.add('field',fx+140,TOP,b.x-fx-140,1300,{es}),trial=(e,l)=>{b.quiet=1;SEG[e](b,l);b.quiet=0;b.level()};
-  const braid=(name,es)=>{b.cp();const fx=b.x;b.ground(240);b.foes(fx,[['wisp',150,230,2],['shade',150,230,3]]);b.bot.push(['form',es[0]],['R','x>',fx-30],['clear',300]);COMBO[name](b);field(fx,es);b.level();b.ground(240);b.frag(b.x-130,b.gy-42);b.bot.push(['R','x>',b.x-150])};
+  const braid=(name,es)=>{b.cp();b.fe=es[0];const fx=b.x;b.ground(240);b.foes(fx,[['wisp',150,230,2],['shade',150,230,3]]);b.bot.push(['form',es[0]],['R','x>',fx-30],['clear',300]);COMBO[name](b);field(fx,es);b.level();b.ground(240);b.frag(b.x-130,b.gy-42);b.bot.push(['R','x>',b.x-150])};
   PATHS.forEach((p,k)=>{const es=p[1],ord=es.map((e,j)=>es[(j+k+1)%4]);b.cp();const fx=b.x;b.ground(260);
     b.say(fx-100,'The Confluence of '+p[0]+' — '+es.map(e=>EL[e].name).join(', ')+'. Read each obstacle, and choose');
     ord.forEach((e,j)=>{if(j===2)b.cp();LEAD(b,e);trial(e,2);if(j%2)b.frag(b.x-90,b.gy-42)});
@@ -368,14 +376,14 @@ function buildConvergence(d){const b=Builder(d);b.fd=d+1;b.ag=1;b.cp();b.ground(
     if(k===0)braid('frozen',['water','ice']);else if(k===1){braid('lamp',['electric','crystal']);braid('doors',['acid','powder','phantom'])}else if(k===2)braid('stair',['water','earth','sticky']);else braid('kiln',['ice','fire'])});
   /* the crucible: every form open, nothing named — eight obstacles from all four paths, wisps between */
   {b.cp();const x0=b.x;b.ground(300);b.say(x0-60,'The Crucible. Every form is yours here — and nothing will tell you which');b.bot.push(['R','x>',x0+200]);
-   ['spiky','air','acid','rock','phantom','magnetic','earth','metal'].forEach((e,j)=>{if(j===4)b.cp();const xs=b.x;b.ground(420);b.foes(xs,[[j%2?'shade':'wisp',150,300],['spit',340,340,2],['wisp',120,250,3]]);
+   ['spiky','air','acid','rock','phantom','magnetic','earth','metal'].forEach((e,j)=>{if(j===4)b.cp();b.fe=e;const xs=b.x;b.ground(420);b.foes(xs,[[j%2?'shade':'wisp',150,300],['spit',340,340,2],['wisp',120,250,3]]);
      b.bot.push(['form',e],['R','x>',xs-30],['clear',420],['R','x>',xs+380]);trial(e,1);if(j%3===1)b.frag(b.x-80,b.gy-42)})}
   b.cp();GAUNT(b,[['frost','ice'],['spike','metal'],['flame','fire'],['bramble','spiky'],['arc','electric'],['sludge','acid']]);
   b.cp();BOSS(b,{name:'The Warden of Sixteen',sub:'Each seal breaks only to the element it names',end:'Sixteen forms. One bearer.',hint:'The Warden of Sixteen. Watch its seal — strike with the element it shows (X), then the next',
     seq:STD,hps:[1,1,2],v:60,rate:[2.6,2.2,1.8],fan:[1,3,3],slam:[7,6,5],nova:null,heal:[3,4,4],sum:4,cap:[2,3,4]});return b}
 /* The Golden Ascension — the hardest road: every element braided with no field to narrow the choice, no hints, the thickest swarms,
    two gauntlets, sparse monuments, and The Unmade before the altar */
-function buildAscension(d){const b=Builder(d),gy=GY;b.fd=d+2;b.ag=2;b.quiet=1;b.cp();b.ground(700);b.say(20,'Come as you began. Only the unformed may cross the Pale Veil');b.bar('nveil',420,40);
+function buildAscension(d){const b=Builder(d),gy=GY;b.mx=2;b.fd=d+2;b.ag=2;b.quiet=1;b.cp();b.ground(700);b.say(20,'Come as you began. Only the unformed may cross the Pale Veil');b.bar('nveil',420,40);
   b.bot.push(['form','normal'],['R','x>',560]);
   b.cp();LEAD(b,'crystal');COMBO.frozen(b);b.frag(b.x-120,b.gy-42);b.level();NEST(b,[['wisp',120,300],['shade',260,440],['spit',470,470]],'fire',560);
   b.cp();LEAD(b,'fire');COMBO.lamp(b);b.frag(b.x-70,b.gy-42);LEAD(b,'ice');COMBO.doors(b);b.frag(b.x-70,b.gy-42);
@@ -395,6 +403,8 @@ function buildAscension(d){const b=Builder(d),gy=GY;b.fd=d+2;b.ag=2;b.quiet=1;b.
   b.cp();{const x0=b.x;b.ground(700);b.add('gcat',x0+420,gy-72,30,30,{q:0,dur:25,fin:1});b.say(x0,'From nothing, all things became possible');b.bot.push(['R','x>',x0+520],['','t',.6]);
     const x1=b.x;b.ground(1500);b.add('lava',x1+150,gy-18,1100,18);b.haz('arc',x1+150,1100);b.say(x1-240,'Walk where nothing else may walk');b.bot.push(['R','x>',x1+1350])}
   return b}
+/* every element lesson builds its foes around its own form */
+for(const T of[SEG,RES])for(const e in T){const f=T[e];T[e]=(b,l)=>{const o=b.fe;b.fe=e;f(b,l);b.fe=o}}
 function buildLevel(i,d){const R=REALMS[i];d=d|0;return finishLevel(i===0?buildAwakening(d):i<=4?buildPath(i,d):i<=7?buildExp(i-4,d):i===8?buildConvergence(d):buildAscension(d),R)}
 function buildHub(){const b=Builder();b.ground(380+REALMS.length*200+320);REALMS.forEach(r=>b.add('portal',380+r.i*200,GY-130,64,130,{ri:r.i}));
   return{R:null,id:'hub',name:'The Eternal Sanctuary',els:null,hue:'#c4c8d4',tut:true,nf:0,zones:[],W:b.x,o:b.o,cps:[{x:clamp(S.hubx||412,100,b.x-100),y:GY}],
@@ -448,7 +458,7 @@ function bossReset(o){Object.assign(o,{x:o.hx,y:o.by,hp:o.mhp,si:0,need:o.seq[0]
 function bossSummon(o){const live=G.o.filter(q=>q.t==='en'&&q.min&&!q.dead).length,cap=o.cap[G.d];if(live>=cap)return;const pcx=G.p.x+15;
   for(let i=0;i<Math.min(2,cap-live);i++){const k=['wisp','shade','spit','wisp','sent'][(o.sn++)%(G.d>1?5:G.d?4:3)],s={wisp:28,shade:34,spit:30,sent:40}[k],hp={wisp:1,shade:2,spit:2,sent:4}[k];
     const left=(pcx>(o.ax0+o.ax1)/2)!==(i>0),x=left?o.ax0+70+i*40:o.ax1-150-i*40,y=o.gy-s-8;
-    G.o.push({t:'en',k,x,y,w:s,h:s,x0:k==='shade'||k==='sent'?o.ax0+40:Math.max(o.ax0+40,x-110),x1:k==='shade'||k==='sent'?o.ax1-110:Math.min(o.ax1-110,x+110),dir:left?1:-1,by:y,stun:.7,frz:0,hp,mhp:hp,ft:1.6,dot:0,fl:.3,min:1});
+    G.o.push({t:'en',k,el:PREY[o.need],x,y,w:s,h:s,x0:k==='shade'||k==='sent'?o.ax0+40:Math.max(o.ax0+40,x-110),x1:k==='shade'||k==='sent'?o.ax1-110:Math.min(o.ax1-110,x+110),dir:left?1:-1,by:y,stun:.7,frz:0,hp,mhp:hp,ft:1.6,dot:0,fl:.3,min:1});
     ring(x+s/2,y+s/2,'#ff4d8a',8);em(x+s/2,y+s/2,'#b070ff',22,{sp:130})}sfx('portal')}
 function bossHit(o,f){const p=G.p,x=o.x+o.w/2,y=o.y+o.h/2;if(!o.on)return;if(o.shd>0){o.fl=.04;return}
   if(f!==o.need){o.fl=.05;em(x,y,'#8a80a8',4,{sp:70});if(o.nt<=0){o.nt=1.8;sfx('deny');note('This seal answers only to '+EL[o.need].name,1.8)}return}
@@ -473,7 +483,10 @@ function stepBoss(o,dt,dm){const p=G.p,pcx=p.x+15,pcy=p.y+15,ex=o.x+o.w/2,ey=o.y
     for(let i=0;i<n;i++){const a=a0+(i-(n-1)/2)*.34;G.eb.push({x:ex,y:ey,vx:Math.cos(a)*bs,vy:Math.sin(a)*bs,life:2.6})}tone(200,.22,'square',.04,90)}
   o.sl-=dt;if(o.sl<=0){o.sl=o.slam[G.d]*rage;o.tel=.65;tone(160,.6,'sine',.05,320)}
   if(o.nova){o.nv-=dt;if(o.nv<=0){o.nv=o.nova[G.d]*rage;const n=10,b2=215;for(let i=0;i<n;i++){const a=i*TAU/n+o.vn*.37;G.eb.push({x:ex,y:ey,vx:Math.cos(a)*b2,vy:Math.sin(a)*b2,life:2.2})}ring(ex,ey,'#ff4d8a',14);tone(120,.4,'sawtooth',.05,60);G.sh=Math.max(G.sh,.2)}}}
-function hitEnemy(o,d,eff,dir,f){if(o.dead)return;if(o.k==='boss'){if(f)bossHit(o,f);return}o.hp-=d;o.fl=.16;const x=o.x+o.w/2,y=o.y+o.h/2;em(x,y,'#ffffff',6,{sp:90});
+let POPS=[];function pop(x,y,s,c){POPS.push({x,y,s,c,t:1.1})}
+function hitEnemy(o,d,eff,dir,f){if(o.dead)return;if(o.k==='boss'){if(f)bossHit(o,f);return}const m=foeMul(o,f),x0=o.x+o.w/2;
+  if(m===0){o.fl=.05;em(x0,o.y+o.h/2,'#8a90a8',5,{sp:60});if(!(o.rt>0)){o.rt=1.2;pop(x0,o.y-14,'RESISTS '+EL[f].name.toUpperCase(),'#a8b0c8');sfx('deny')}return}
+  if(m===2){d*=2;ring(x0,o.y+o.h/2,EL[f].c,8);pop(x0,o.y-14,'WEAK  ×2',EL[f].c)}o.hp-=d;o.fl=.16;const x=o.x+o.w/2,y=o.y+o.h/2;em(x,y,'#ffffff',6,{sp:90});
   switch(eff){case'burn':o.dot=.8;break;case'corrode':o.dot=1.3;break;case'push':o.x=clamp(o.x+dir*90,o.x0-70,o.x1+70);o.stun=Math.max(o.stun,.6);break;case'freeze':o.frz=Math.max(o.frz,4);break;
   case'glue':o.stun=Math.max(o.stun,5);break;case'root':o.stun=Math.max(o.stun,3);break;case'stun':o.stun=Math.max(o.stun,2);break;case'pull':o.x=clamp(o.x-dir*60,o.x0-70,o.x1+70);o.stun=Math.max(o.stun,1.2);break;
   case'drain':if(o.hp<=0&&G.p.hp<G.maxhp){G.p.hp++;em(G.p.x+15,G.p.y+15,'#ff5a7a',16,{sp:80})}break}
@@ -499,14 +512,14 @@ function power(sec){const p=G.p,f=p.form;if(G.tf||p.vent)return;if(f==='normal')
   case'water':each('flame',160*k,o=>{if(o.out)return false;o.out=1});each('braz',160*k,o=>{if(o.out)return false;o.out=1;trigger(o.to)});
     each('pool',170*k,o=>{if(!o.dry||o.filling)return false;o.filling=1;o.fill=0});each('soil',150*k,o=>{if(!o.dry)return false;o.dry=0});break;
   case'earth':each('soil',120*k,o=>{if(o.on)return false;if(o.dry){note('This soil is parched — it needs water first');return false}o.on=1;for(const r of o.grow)G.o.push({t:'g',x:r[0],y:r[1],w:r[2],h:r[3],ow:r[4],k:'leaf',born:G.time})});break;
-  case'electric':if(p.inW){hurt(1,1);note('Lightning and water do not forgive')}each('sw',170*k*(m>2?1.4:1),o=>{if(o.on)return false;o.on=1;trigger(o.to)});each('en',180*k,o=>{if(o.dead)return false;o.stun=Math.max(o.stun,3*k)});break;
-  case'ice':each('pool',190*k,o=>{if(o.dry||o.iced>0)return false;const D=[0,8,10,14][m];o.iced=D;G.o.push({t:'ice',x:o.x,y:o.y-4,w:o.w,h:14,life:D})});each('en',190*k,o=>{if(o.dead)return false;o.frz=Math.max(o.frz,5*k)});break;
+  case'electric':if(p.inW){hurt(1,1);note('Lightning and water do not forgive')}each('sw',170*k*(m>2?1.4:1),o=>{if(o.on)return false;o.on=1;trigger(o.to)});each('en',180*k,o=>{if(o.dead||o.el==='electric')return false;o.stun=Math.max(o.stun,3*k)});break;
+  case'ice':each('pool',190*k,o=>{if(o.dry||o.iced>0)return false;const D=[0,8,10,14][m];o.iced=D;G.o.push({t:'ice',x:o.x,y:o.y-4,w:o.w,h:14,life:D})});each('en',190*k,o=>{if(o.dead||o.el==='ice')return false;o.frz=Math.max(o.frz,5*k)});break;
   case'sticky':if(p.wall&&!p.g){p.vy=-560*(m>2?1.15:1);p.vx=-p.wall*280;p.lock=.18;p.wall=0;p.nocut=.4;hit=1}else if(p.ceil){p.ceil=0;hit=1}else if(p.g){p.vy=-520*(m>2?1.1:1);p.g=0;p.cy=0;p.nocut=.4;hit=1}break;
   case'acid':each('bars',140*k,o=>{if(o.d>0)return false;o.d=.01},m>2&&320);break;
   case'powder':if(p.inW){note('Water binds the dust');deny();p.cd=.2;return}p.dsp=[0,2.2,2.8,3.6][m];p.cd=0;hit=1;break;
   case'air':each('turb',220*k,o=>{if(o.on)return false;o.on=1;trigger(o.to)});if(m>2&&!p.surge){p.vy=-600;p.surge=1;p.g=0;p.cy=0;p.nocut=.5}hit=1;break;
   case'psychic':each('pblock',320*k,o=>{o.tm=[0,6,8,11][m]});break;
-  case'spiky':each('memb',110*k,o=>{if(o.d>0)return false;o.d=.6},m>2&&420);each('en',120*k,o=>{if(o.dead)return false;if(o.k==='wisp')hitEnemy(o,9);else o.stun=Math.max(o.stun,2.5)});break;
+  case'spiky':each('memb',110*k,o=>{if(o.d>0)return false;o.d=.6},m>2&&420);each('en',120*k,o=>{if(o.dead||o.el==='spiky')return false;if(o.k==='wisp')hitEnemy(o,9,'',1,'spiky');else o.stun=Math.max(o.stun,2.5)});break;
   case'rock':each('crack',[0,75,95,170][m],o=>{if(o.d>0)return false;o.d=.5});G.sh=.35;break;
   case'phantom':p.ph=[0,3,3.8,5][m];p.cd=0;hit=1;break;
   case'crystal':{const bm=G.o.find(o=>o.t==='beam'&&o.on&&ov(p,o));if(!bm){note('Crystal needs a beam of light to bend');deny();p.cd=.3;return}
@@ -529,11 +542,11 @@ function stepWorld(dt){const p=G.p,pcx=p.x+15,pcy=p.y+15,dm=[1,1.15,1.3][G.d]*(1
         if(s){const cur=o[ax],nv=clamp(cur+s*150*dt,o.a,o.b);if(nv!==cur){if(ax==='x')moveSolid(o,nv-cur,0);else moveSolid(o,0,nv-cur)}o.act=.15}}}break;
   case'pblock':{if(o.tm>0)o.tm-=dt;const ty=o.tm>0?o.ly:o.ry;if(o.y!==ty){const ny=appr(o.y,ty,170*dt),ride=p.g&&Math.abs(p.y+p.h-o.y)<3&&p.x+p.w>o.x&&p.x<o.x+o.w;
       if(!ride&&o.tm<=0&&ov(p,{x:o.x,y:ny,w:o.w,h:o.h}))break;moveSolid(o,0,ny-o.y)}}break;
-  case'en':{if(o.dead){o.rm=1;rm=1;em(o.x+o.w/2,o.y+o.h/2,o.k==='sent'?'#ff4060':'#b070ff',22,{sp:150});break}if(o.k==='boss'){stepBoss(o,dt,dm);break}if(o.fl>0)o.fl-=dt;if(o.stun>0)o.stun-=dt;if(o.frz>0)o.frz-=dt;
+  case'en':{if(o.dead){o.rm=1;rm=1;em(o.x+o.w/2,o.y+o.h/2,o.el?EL[o.el].c:o.k==='sent'?'#ff4060':'#b070ff',22,{sp:150});break}if(o.k==='boss'){stepBoss(o,dt,dm);break}if(o.fl>0)o.fl-=dt;if(o.rt>0)o.rt-=dt;if(o.stun>0)o.stun-=dt;if(o.frz>0)o.frz-=dt;
     if(o.dot>0){o.dot-=dt;if(o.dot<=0){hitEnemy(o,1);if(o.dead)break}}
     if(o.stun>0||o.frz>0)break;const ex=o.x+o.w/2;
     if(o.k==='shade'&&pcx>o.x0-90&&pcx<o.x1+o.w+90&&Math.abs(pcy-o.y)<200&&!(p.ph>0||p.dsp>0)){o.dir=pcx>ex?1:-1;o.x=clamp(o.x+o.dir*84*dm*dt,o.x0,o.x1)}
-    else if(o.k==='spit'){o.dir=pcx>ex?1:-1;o.ft-=dt;const dx=pcx-ex,dy=pcy-(o.y+o.h/2),d=Math.hypot(dx,dy);if(o.ft<=0&&d<430&&Math.abs(dy)<150&&d>30){const bs=[230,260,290][G.d];o.ft=[2.4,1.9,1.5][G.d]*(1-.1*(G.L.ag||0));G.eb.push({x:ex,y:o.y+o.h/2,vx:dx/d*bs,vy:dy/d*bs,life:2.4});tone(240,.18,'square',.03,120)}else if(o.ft<=0)o.ft=.3}
+    else if(o.k==='spit'){o.dir=pcx>ex?1:-1;o.ft-=dt;const dx=pcx-ex,dy=pcy-(o.y+o.h/2),d=Math.hypot(dx,dy);if(o.ft<=0&&d<430&&Math.abs(dy)<150&&d>30){const bs=[230,260,290][G.d];o.ft=[2.4,1.9,1.5][G.d]*(1-.1*(G.L.ag||0));G.eb.push({x:ex,y:o.y+o.h/2,vx:dx/d*bs,vy:dy/d*bs,life:2.4,e:o.el});tone(240,.18,'square',.03,120)}else if(o.ft<=0)o.ft=.3}
     else{o.x+=o.dir*(o.k==='sent'?85:60)*dm*dt;if(o.x>o.x1){o.x=o.x1;o.dir=-1}else if(o.x<o.x0){o.x=o.x0;o.dir=1}}
     o.y=o.by+Math.sin(G.time*2.2+o.x0)*7}break}}
   if(rm)G.o=G.o.filter(o=>!o.rm)}
@@ -547,8 +560,9 @@ function stepShots(dt){const p=G.p,sol=G.shots.length||G.eb.length?solids():null
   if(G.eb.length){for(const s of G.eb){s.life-=dt;s.x+=s.vx*dt;s.y+=s.vy*dt;const d=Math.hypot(s.x-pcx,s.y-pcy);
       if(hitSolid({x:s.x-3,y:s.y-3,w:6,h:6},sol)){s.life=0;continue}
       if(p.form==='magnetic'&&d<95&&!(p.gold>0)){s.vy-=1500*dt;s.vx*=1-2*dt;continue}
-      if(d<17){if(p.form==='crystal'&&!(p.gold>0)){G.shots.push({x:s.x,y:s.y,vx:-s.vx*1.6,vy:-s.vy*1.6,life:1.6,dmg:2,eff:'',c:'#8fe9ff',hit:[],f:'crystal'});ring(pcx,pcy,'#8fe9ff',6);sfx('equip')}else if(!immune('bolt'))hurt(1);s.life=0}}
-    G.eb=G.eb.filter(s=>s.life>0)}}
+      if(d<17){if(s.e&&s.e===p.form){em(s.x,s.y,EL[s.e].c,10,{sp:70});s.life=0;continue}if(p.form==='crystal'&&!(p.gold>0)){G.shots.push({x:s.x,y:s.y,vx:-s.vx*1.6,vy:-s.vy*1.6,life:1.6,dmg:2,eff:'',c:'#8fe9ff',hit:[],f:'crystal'});ring(pcx,pcy,'#8fe9ff',6);sfx('equip')}else if(!immune('bolt'))hurt(1);s.life=0}}
+    G.eb=G.eb.filter(s=>s.life>0)}
+  if(POPS.length){for(const q of POPS){q.t-=dt;q.y-=34*dt}POPS=POPS.filter(q=>q.t>0)}}
 
 function hitSolid(r,sol){for(const o of sol)if(!o.ow&&ov(r,o))return o;return null}
 function unstick(p,sol){for(let d=2;d<=60;d+=2)for(const v of[[0,-d],[-d,0],[d,0],[0,d]]){const r={x:p.x+v[0],y:p.y+v[1],w:p.w,h:p.h};if(!hitSolid(r,sol)){p.x=r.x;p.y=r.y;return}}}
@@ -593,8 +607,8 @@ function stepPlayer(dt){const p=G.p,L=G.L;
   case'spike':zone(o,'spike',1);break;case'frost':zone(o,'frost',1);break;case'bramble':zone(o,'bramble',1);break;
   case'arc':zone(o,'arc',p.form==='water'?2:1);break;
   case'lava':zone(o,'lava',3);break;
-  case'en':if(!o.dead&&ov(hb,o)){if(o.k==='boss'){if(p.gold>0)break;if(p.dash>0){if(o.dn!==p.dashN){o.dn=p.dashN;hitEnemy(o,2,'',p.f,'metal')}break}if(o.cs>0||o.daze>0)break;if(!immune('en'))hurt(1);break}if(p.gold>0){hitEnemy(o,99);break}if(p.dash>0){if(o.dn!==p.dashN){o.dn=p.dashN;hitEnemy(o,2,'',p.f)}break}if(o.stun>0||o.frz>0)break;
-      if(p.form==='spiky'&&o.k!=='sent'){if(o.k==='wisp')hitEnemy(o,9);else{if(o.tn!==1){hitEnemy(o,1,'stun',p.f)}}break}
+  case'en':if(!o.dead&&ov(hb,o)){if(o.k==='boss'){if(p.gold>0)break;if(p.dash>0){if(o.dn!==p.dashN){o.dn=p.dashN;hitEnemy(o,2,'',p.f,'metal')}break}if(o.cs>0||o.daze>0)break;if(!immune('en'))hurt(1);break}if(p.gold>0){hitEnemy(o,99);break}if(p.dash>0){if(o.dn!==p.dashN){o.dn=p.dashN;hitEnemy(o,2,'',p.f,'metal')}break}if(o.stun>0||o.frz>0)break;if(o.el&&o.el===p.form)break;
+      if(p.form==='spiky'&&o.k!=='sent'){if(o.k==='wisp')hitEnemy(o,9,'',p.f,'spiky');else{if(o.tn!==1){hitEnemy(o,1,'stun',p.f,'spiky')}}break}
       if(p.form==='spiky'){o.stun=2.5;sfx('ehit');break}if(p.form==='psychic'&&o.k==='sent')break;if(!immune('en'))hurt(1)}break;
   case'cat':if(!S.el[o.e]&&!G.tf&&Math.abs(cx-o.x-15)<24){G.tf={t:0,e:o.e,o};tone(150,1.4,'sine',.08,620)}break;
   case'gcat':if(!o.used&&Math.abs(cx-o.x-15)<24){const need=o.q-G.fg;if(need<=0)goldOn(o);else if(G.nt<=0)note('The Gold Catalyst sleeps — gather '+need+' more fragment'+(need>1?'s':'')+' on this run')}break;
@@ -744,14 +758,19 @@ updraft(o){const r=vr(o);X.save();X.fillStyle='rgba(200,235,255,.05)';X.fillRect
 field(o){const one=o.es.length===1,c=EL[o.es[0]].c,r=vr(o);X.save();X.globalCompositeOperation='lighter';X.fillStyle=rgba(c,.035);X.fillRect(o.x,r[0],o.w,r[1]-r[0]);
   for(const x of[o.x,o.x+o.w-6])o.es.forEach((e,i)=>{const h=(r[1]-r[0])/o.es.length;X.fillStyle=rgba(EL[e].c,.3+.12*Math.sin(T*3+i));X.fillRect(x,r[0]+i*h,6,h)});X.restore();
   X.save();txt(one?EL[o.es[0]].name.toUpperCase()+' TRIAL':'CONFLUENCE  ·  '+o.es.map(e=>EL[e].name).join(' + '),o.x+24,G.cam.y+150,'bold 13px Georgia',one?c:'#ffffff','left',8);X.restore()},
-en(o){if(o.k==='boss')return drawBoss(o);const x=o.x+o.w/2,y=o.y+o.h/2,s=o.w/2,fz=o.frz>0,st=o.stun>0,k=o.k,c=fz?'#a8ecff':k==='sent'?'#ff4060':k==='shade'?'#ff5ac8':k==='spit'?'#ffae3a':'#9a5cff';X.save();X.globalCompositeOperation='lighter';glow(x,y,s*2.6,c,.45);X.restore();
+en(o){if(o.k==='boss')return drawBoss(o);const x=o.x+o.w/2,y=o.y+o.h/2,s=o.w/2,fz=o.frz>0,st=o.stun>0,k=o.k,E=o.el&&EL[o.el],c=fz?'#a8ecff':E?E.c:k==='sent'?'#ff4060':k==='shade'?'#ff5ac8':k==='spit'?'#ffae3a':'#9a5cff';X.save();X.globalCompositeOperation='lighter';glow(x,y,s*2.6,c,.45);X.restore();
   X.save();X.shadowColor=c;X.shadowBlur=12;X.fillStyle=o.fl>0?'#ffffff':fz?'#3a6a80':k==='shade'?'#2a0820':'#150a26';X.beginPath();
   if(k==='sent'){for(let i=0;i<6;i++){const a=i*TAU/6+T*(fz||st?0:.8);X.lineTo(x+Math.cos(a)*s,y+Math.sin(a)*s)}X.closePath()}
   else if(k==='spit'){X.arc(x,y,s,0,TAU)}
-  else{X.arc(x,y,s,Math.PI,0);for(let i=0;i<=4;i++)X.lineTo(x+s-i*s/2,y+s*(i%2?.5:1)+Math.sin(T*6+i)*2)}X.fill();X.strokeStyle=c;X.lineWidth=1.5;X.stroke();
+  else{X.arc(x,y,s,Math.PI,0);for(let i=0;i<=4;i++)X.lineTo(x+s-i*s/2,y+s*(i%2?.5:1)+Math.sin(T*6+i)*2)}X.fill();
+  if(E&&o.fl<=0){X.save();X.clip();X.shadowBlur=0;X.translate(x,y);X.globalAlpha=fz?.35:.9;orbInner(o.el,s*.95,E.c,E.c2);X.restore()}X.strokeStyle=c;X.lineWidth=1.5;X.stroke();
+  if(k==='sent'&&E){X.strokeStyle='#ff4060';X.lineWidth=1;X.beginPath();for(let i=0;i<6;i++){const a=i*TAU/6-T*(fz||st?0:.5);X.lineTo(x+Math.cos(a)*s*1.22,y+Math.sin(a)*s*1.22)}X.closePath();X.stroke()}
   if(k==='shade'){X.beginPath();X.moveTo(x-s*.7,y-s*.6);X.lineTo(x-s*.95,y-s*1.5);X.lineTo(x-s*.25,y-s*.9);X.moveTo(x+s*.7,y-s*.6);X.lineTo(x+s*.95,y-s*1.5);X.lineTo(x+s*.25,y-s*.9);X.stroke()}
   X.fillStyle=st?'#ffe94d':c;X.beginPath();if(k==='spit'){X.arc(x+o.dir*s*.3,y,s*.42,0,TAU);X.fill();X.fillStyle='#150a26';X.beginPath();X.arc(x+o.dir*s*.45,y,s*.18,0,TAU)}else{X.arc(x-s*.35,y-2,2.4,0,TAU);X.arc(x+s*.35,y-2,2.4,0,TAU)}X.fill();
   if(o.mhp>1)for(let i=0;i<o.mhp;i++){X.fillStyle=i<o.hp?c:'rgba(255,255,255,.15)';X.fillRect(x-o.mhp*4+i*8,o.y-10,6,3)}
+  /* at a glance: a bright ring when your form is its bane, a dim bar when it resists you */
+  if(E&&G.p){const pf=G.p.form;if(FOE[o.el][1]===pf){X.strokeStyle=rgba(EL[pf].c,.55+.35*Math.sin(T*7));X.lineWidth=2;X.setLineDash([4,5]);X.lineDashOffset=-T*30;X.beginPath();X.arc(x,y,s+9,0,TAU);X.stroke();X.setLineDash([])}
+    else if(pf===o.el){X.strokeStyle='rgba(200,206,224,.6)';X.lineWidth=2;X.beginPath();X.arc(x,o.y-20,6,0,TAU);X.moveTo(x-4,o.y-16);X.lineTo(x+4,o.y-24);X.stroke()}}
   X.restore();if(st&&Math.random()<.4)em(x+rnd(-s,s),y+rnd(-s,s),'#ffe94d',1,{sp:40,l:.3})},
 braz(o){const x=o.x+20,on=!o.out;X.save();X.fillStyle='#2a2540';X.fillRect(x-4,o.y+26,8,18);X.fillStyle='#4a3f66';X.beginPath();X.moveTo(x-20,o.y+14);X.lineTo(x+20,o.y+14);X.lineTo(x+12,o.y+28);X.lineTo(x-12,o.y+28);X.fill();X.restore();
   X.save();X.globalCompositeOperation='lighter';glow(x,o.y+8,on?90:20,on?'#ff8a2e':'#556688',on?.8:.4);if(on)for(let i=0;i<3;i++){const h=22+10*Math.sin(T*8+i*2);X.fillStyle=i%2?'rgba(255,210,90,.7)':'rgba(255,110,30,.7)';X.beginPath();X.moveTo(x-12+i*8,o.y+14);X.quadraticCurveTo(x-8+i*8+Math.sin(T*6+i)*4,o.y+14-h*1.4,x-4+i*8,o.y+14);X.fill()}X.restore();
@@ -833,7 +852,8 @@ function drawWorld(){const L=G.L,p=G.p,c=G.cam,zn=G.zi>=0?L.zones[G.zi]:null;dra
   if(G.tf){const f=G.tf;X.save();X.globalCompositeOperation='lighter';glow(p.x+15,p.y+15,60+f.t*90,EL[f.e].c,.5);X.restore()}
   drawOrb(p.x+15,p.y+15,15,p.gold>0&&(p.gold>2||Math.floor(T*10)%2)?'gold':p.form,p);
   for(const q of G.shots){X.save();X.globalCompositeOperation='lighter';glow(q.x,q.y,16,q.c,.9);X.restore();X.fillStyle='#ffffff';X.beginPath();X.arc(q.x,q.y,3,0,TAU);X.fill()}
-  for(const q of G.eb){if(q.w){const s=Math.sign(q.vx);X.save();X.globalCompositeOperation='lighter';glow(q.x,q.y-4,34,'#ff3a70',.7);X.restore();X.save();X.strokeStyle='#ff9ab8';X.shadowColor='#ff3a70';X.shadowBlur=14;X.lineWidth=3;X.beginPath();X.moveTo(q.x-s*12,q.y+12);X.quadraticCurveTo(q.x+s*12,q.y,q.x-s*6,q.y-20);X.stroke();X.lineWidth=1.5;X.beginPath();X.moveTo(q.x-s*24,q.y+12);X.quadraticCurveTo(q.x-s*4,q.y+2,q.x-s*18,q.y-12);X.stroke();X.restore();continue}X.save();X.globalCompositeOperation='lighter';glow(q.x,q.y,18,'#ff3a70',.8);X.restore();X.fillStyle='#1a0616';X.strokeStyle='#ff6a9a';X.lineWidth=1.5;X.beginPath();X.arc(q.x,q.y,5,0,TAU);X.fill();X.stroke()}
+  for(const q of POPS){X.save();X.globalAlpha=Math.min(1,q.t*1.6);txt(q.s,q.x,q.y,'bold 13px Georgia',q.c,0,8);X.restore()}
+  for(const q of G.eb){if(q.w){const s=Math.sign(q.vx);X.save();X.globalCompositeOperation='lighter';glow(q.x,q.y-4,34,'#ff3a70',.7);X.restore();X.save();X.strokeStyle='#ff9ab8';X.shadowColor='#ff3a70';X.shadowBlur=14;X.lineWidth=3;X.beginPath();X.moveTo(q.x-s*12,q.y+12);X.quadraticCurveTo(q.x+s*12,q.y,q.x-s*6,q.y-20);X.stroke();X.lineWidth=1.5;X.beginPath();X.moveTo(q.x-s*24,q.y+12);X.quadraticCurveTo(q.x-s*4,q.y+2,q.x-s*18,q.y-12);X.stroke();X.restore();continue}const bc=q.e?EL[q.e].c:'#ff3a70';X.save();X.globalCompositeOperation='lighter';glow(q.x,q.y,18,bc,.8);X.restore();X.fillStyle=q.e?'#0c0818':'#1a0616';X.strokeStyle=q.e?EL[q.e].c2:'#ff6a9a';X.lineWidth=q.e?2:1.5;X.beginPath();X.arc(q.x,q.y,5,0,TAU);X.fill();X.stroke()}
   X.globalCompositeOperation='lighter';for(const r of G.rays){X.globalAlpha=clamp(r.l*(r.c?3:1),0,1);X.strokeStyle='#fff';X.shadowColor=r.c||'#8fe9ff';X.shadowBlur=16;X.lineWidth=4;X.beginPath();X.moveTo(r.x1,r.y1);X.lineTo(r.x2,r.y2);X.stroke()}
   X.shadowBlur=0;for(const q of PT){X.globalAlpha=Math.max(0,q.l/q.m);X.fillStyle=q.c;X.beginPath();X.arc(q.x,q.y,q.s,0,TAU);X.fill()}
   for(const r of RG){X.globalAlpha=Math.max(0,r.l/.7);X.strokeStyle=r.c;X.shadowColor=r.c;X.shadowBlur=14;X.lineWidth=3;X.beginPath();X.arc(r.x,r.y,r.r,0,TAU);X.stroke()}
@@ -985,7 +1005,7 @@ function drawCodex(){txt('ELEMENTAL CODEX',VW/2,54,'bold 30px Georgia','#bff4ff'
   if(!has){X.fillStyle='#0d0b18';X.beginPath();X.arc(px+pw/2,150,38,0,TAU);X.fill();txt('UNDISCOVERED',px+pw/2,230,'bold 20px Georgia','#667');txt(f==='gold'?'Gather fragments and wake a Gold Catalyst.':'A catalyst waits in '+ZONE[f][1]+'.',px+pw/2,258,'italic 14px Georgia','#8fa3c8')}
   else{drawOrb(px+pw/2,118,28,f);txt(e.name.toUpperCase(),px+pw/2,178,'bold 22px Georgia',e.c,0,12);txt(f==='normal'?'The unformed vessel':f==='gold'?'A gift of the Gold Catalysts':'Mastery '+STAGE[has],px+pw/2,198,'italic 13px Georgia','#c8d4ea');
     let y=226;const row=(k,v)=>{txt(k,px,y,'bold 11px Georgia','#8fa3c8','left');y=wrap(v,px,y+16,pw,16,'13px Georgia','#e6ecff')+7};
-    row(f==='gold'?'STATE':'POWER  ·  E',(e.pn?e.pn+' — ':'')+e.desc);row('ATTACK  ·  X',e.atk);row('RESISTANCE',e.res);row('WEAKNESS',e.weak);if(e.up)row(has>=3?'MASTERY POWER':'AT MASTERY III',e.up)}
+    row(f==='gold'?'STATE':'POWER  ·  E',(e.pn?e.pn+' — ':'')+e.desc);row('ATTACK  ·  X',e.atk);row('RESISTANCE',e.res);row('WEAKNESS',e.weak);if(FOE[f])row('FOES',FOE[f][0]+'s cannot hurt you while you are '+e.name+' — nor you them. '+FOE[PREY[f]][0]+'s take double from your '+e.name+' attack.');if(e.up)row(has>=3?'MASTERY POWER':'AT MASTERY III',e.up)}
   txt('← → ↑ ↓ to browse  ·  Esc to return',VW/2-140,VH-22,'italic 13px Georgia','#6f7fa6');hit(VW-150,VH-46,130,34,goBack);txt('‹ Back',VW-86,VH-22,'bold 16px Georgia','#bff4ff')}
 /* the Journey: the wheel fills as each path is walked; the road runs down the right */
 function drawRealms(){const nx=nextGoal(),N=REALMS.length;if(!ui.init){ui.init=1;ui.i=nx>=0?nx:0}txt('THE JOURNEY',VW/2,40,'bold 28px Georgia','#bff4ff',0,16);
